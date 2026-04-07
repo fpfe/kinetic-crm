@@ -36,7 +36,8 @@ export default function LeadsPage() {
       ])
       if (!leadsRes.ok)
         throw new Error((await leadsRes.json()).error || 'Failed to load leads')
-      setLeads(await leadsRes.json())
+      const leadsData = await leadsRes.json()
+      setLeads(Array.isArray(leadsData) ? leadsData : [])
       if (typesRes.ok) {
         const types = await typesRes.json()
         if (Array.isArray(types)) setServiceTypes(types)

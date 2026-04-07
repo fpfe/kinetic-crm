@@ -42,10 +42,11 @@ export default function PipelineBoard({
     let alive = true
     fetch('/api/leads')
       .then((r) => r.json())
-      .then((data: Lead[]) => {
+      .then((data: unknown) => {
         if (!alive) return
-        setLeads(data)
-        onLeadsChange?.(data)
+        const safe: Lead[] = Array.isArray(data) ? (data as Lead[]) : []
+        setLeads(safe)
+        onLeadsChange?.(safe)
       })
       .catch((e) => alive && setError((e as Error).message))
       .finally(() => alive && setLoading(false))

@@ -93,7 +93,8 @@ export default function ReportsPage() {
     try {
       const res = await fetch('/api/leads', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load leads')
-      setLeads(await res.json())
+      const data = await res.json()
+      setLeads(Array.isArray(data) ? data : [])
     } catch (err) {
       setError((err as Error).message)
     } finally {
