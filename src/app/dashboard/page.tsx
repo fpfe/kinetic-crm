@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Lead } from '@/types'
 import { calcMetrics } from '@/lib/metrics'
 import KpiCards from '@/components/dashboard/KpiCards'
@@ -13,6 +13,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const menuWrapRef = useRef<HTMLDivElement | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -33,7 +36,154 @@ export default function DashboardPage() {
     refresh()
   }, [refresh])
 
+  useEffect(() => {
+    if (!menuOpen) return
+    function onClick(e: MouseEvent) {
+      if (
+        menuWrapRef.current &&
+        !menuWrapRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [menuOpen])
+
   const metrics = useMemo(() => calcMetrics(leads), [leads])
+
+  function exportCSV(leads: Lead[]) {
+    const headers = [
+      'Company', 'Contact', 'Email',
+      'Service Type', 'Lead Source',
+      'Assigned To', 'Status', 'Region',
+      'Deal Value', 'Created At',
+    ]
+    const rows = leads.map((l) => [
+      l.company, l.contactName, l.email,
+      l.serviceType, l.leadSource,
+      l.assignedTo, l.status, l.region,
+      l.dealValue, l.createdAt,
+    ])
+    const csv = [headers, ...rows]
+      .map((r) =>
+        r
+          .map((v) =>
+            String(v ?? '').includes(',') ? `"${v}"` : String(v ?? '')
+          )
+          .join(',')
+      )
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `kinetic-crm-dashboard-${
+      new Date().toISOString().split('T')[0]
+    }.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function exportPDF() {
+    const { jsPDF } = await import('jspdf')
+
+    const doc = new jsPDF('p', 'mm', 'a4')
+
+    // Header
+    doc.setFontSize(20)
+    doc.setTextColor(168, 57, 0)
+    doc.text('Kinetic CRM', 20, 20)
+
+    doc.setFontSize(12)
+    doc.setTextColor(91, 65, 55)
+    doc.text('Dashboard Report', 20, 30)
+    doc.text(
+      `Generated: ${new Date().toLocaleDateString('ja-JP')}`,
+      20,
+      38
+    )
+
+    // KPI Section
+    doc.setFontSize(14)
+    doc.setTextColor(24, 28, 35)
+    doc.text('Key Performance Indicators', 20, 55)
+
+    doc.setFontSize(11)
+    doc.setTextColor(91, 65, 55)
+
+    const m = calcMetrics(leads)
+
+    const kpis: [string, string][] = [
+      ['Merchant Acquisition Rate', `${m.acquisitionRate}%`],
+      ['Lead Conversion Rate', `${m.conversionRate}%`],
+      ['Average Sales Cycle', `${m.avgCycleDays} days`],
+      ['Total Leads', String(leads.length)],
+      ['Total Pipeline Value', `¥${m.totalValue.toLocaleString()}`],
+    ]
+
+    kpis.forEach(([label, value], i) => {
+      const y = 65 + i * 10
+      doc.text(label + ':', 20, y)
+      doc.setTextColor(168, 57, 0)
+      doc.text(value, 120, y)
+      doc.setTextColor(91, 65, 55)
+    })
+
+    // Pipeline Health Section
+    doc.setFontSize(14)
+    doc.setTextColor(24, 28, 35)
+    doc.text('Pipeline Health', 20, 125)
+
+    doc.setFontSize(11)
+    doc.setTextColor(91, 65, 55)
+
+    const stages: [string, number][] = [
+      ['Prospecting (New)', m.stageCounts['New'] ?? 0],
+      ['Contacted', m.stageCounts['Contacted'] ?? 0],
+      ['Qualification', m.stageCounts['Qualified'] ?? 0],
+      ['Proposal', m.stageCounts['Proposal Sent'] ?? 0],
+      ['Negotiation', m.stageCounts['Negotiation'] ?? 0],
+      ['Closed Won', m.stageCounts['Closed Won'] ?? 0],
+      ['Closed Lost', m.stageCounts['Closed Lost'] ?? 0],
+    ]
+
+    stages.forEach(([label, count], i) => {
+      const y = 135 + i * 10
+      doc.text(String(label) + ':', 20, y)
+      doc.setTextColor(168, 57, 0)
+      doc.text(String(count), 120, y)
+      doc.setTextColor(91, 65, 55)
+    })
+
+    // Footer
+    doc.setFontSize(9)
+    doc.setTextColor(150, 150, 150)
+    doc.text(
+      'Kinetic CRM · Internal Use Only · Japan Market',
+      20,
+      doc.internal.pageSize.getHeight() - 10
+    )
+
+    doc.save(
+      `kinetic-crm-report-${new Date().toISOString().split('T')[0]}.pdf`
+    )
+  }
+
+  async function handlePDF() {
+    setMenuOpen(false)
+    setGenerating(true)
+    try {
+      await exportPDF()
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  function handleCSV() {
+    setMenuOpen(false)
+    exportCSV(leads)
+  }
 
   return (
     <div>
@@ -56,18 +206,80 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 pt-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#a83900]/30 text-[#a83900] text-sm font-semibold hover:bg-[#a83900]/5 transition"
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: 18 }}
+          <div ref={menuWrapRef} className="relative">
+            <button
+              type="button"
+              disabled={generating}
+              onClick={() => setMenuOpen((o) => !o)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#a83900]/30 text-[#a83900] text-sm font-semibold hover:bg-[#a83900]/5 transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              download
-            </span>
-            Generate Report
-          </button>
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 18,
+                  animation: generating
+                    ? 'spin 1s linear infinite'
+                    : undefined,
+                }}
+              >
+                {generating ? 'progress_activity' : 'download'}
+              </span>
+              {generating ? 'Generating...' : 'Generate Report'}
+            </button>
+            {menuOpen && !generating && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  left: 0,
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  border: '1px solid #ebedf8',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  padding: 8,
+                  minWidth: 180,
+                  zIndex: 50,
+                }}
+              >
+                <div
+                  onClick={handlePDF}
+                  className="hover:bg-[#f1f3fe] rounded-lg flex items-center gap-2"
+                  style={{
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    color: '#181c23',
+                    fontSize: 13,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    picture_as_pdf
+                  </span>
+                  Download PDF
+                </div>
+                <div
+                  onClick={handleCSV}
+                  className="hover:bg-[#f1f3fe] rounded-lg flex items-center gap-2"
+                  style={{
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    color: '#181c23',
+                    fontSize: 13,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    table_chart
+                  </span>
+                  Download CSV
+                </div>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => setFormOpen(true)}
