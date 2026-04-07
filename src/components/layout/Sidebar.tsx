@@ -9,7 +9,7 @@ const NAV = [
   { label: 'Members', href: '/members' },
   { label: 'CRM', href: '#' },
   { label: 'Pipeline', href: '/pipeline' },
-  { label: 'Reports', href: '#' },
+  { label: 'Reports', href: '/reports' },
 ]
 
 const FOOTER = [
