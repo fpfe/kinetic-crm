@@ -3,14 +3,14 @@
 import { usePathname } from 'next/navigation'
 
 function titleFor(pathname: string | null): string {
-  if (!pathname) return 'Kinetic CRM'
+  if (!pathname) return 'Headout Japan CRM'
   if (/^\/leads\/[^/]+/.test(pathname)) return 'Merchant Profile'
   if (pathname.startsWith('/leads')) return 'Lead Management'
   if (pathname.startsWith('/pipeline')) return 'Sales Pipeline'
   if (pathname.startsWith('/dashboard')) return 'Dashboard'
   if (pathname.startsWith('/reports')) return 'Reports'
   if (pathname.startsWith('/crm')) return 'Merchant CRM'
-  return 'Kinetic CRM'
+  return 'Headout Japan CRM'
 }
 
 export default function TopNav() {

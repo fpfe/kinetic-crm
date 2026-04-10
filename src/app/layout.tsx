@@ -3,7 +3,7 @@ import './globals.css'
 import AppShell from '@/components/layout/AppShell'
 
 export const metadata: Metadata = {
-  title: 'Kinetic CRM',
+  title: 'Headout Japan CRM',
   description: 'Sales Tool for Acquiring Experience Service Merchants in Japan',
 }
 

@@ -125,7 +125,7 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-6 text-[11px] text-gray-500">
-        Kinetic CRM · Internal Use Only
+        Headout Japan CRM · Internal Use Only
       </div>
     </div>
   )

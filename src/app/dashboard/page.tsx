@@ -94,7 +94,7 @@ export default function DashboardPage() {
     // Header
     doc.setFontSize(20)
     doc.setTextColor(168, 57, 0)
-    doc.text('Kinetic CRM', 20, 20)
+    doc.text('Headout Japan CRM', 20, 20)
 
     doc.setFontSize(12)
     doc.setTextColor(91, 65, 55)
@@ -161,7 +161,7 @@ export default function DashboardPage() {
     doc.setFontSize(9)
     doc.setTextColor(150, 150, 150)
     doc.text(
-      'Kinetic CRM · Internal Use Only · Japan Market',
+      'Headout Japan CRM · Internal Use Only · Japan Market',
       20,
       doc.internal.pageSize.getHeight() - 10
     )
@@ -343,7 +343,7 @@ export default function DashboardPage() {
           className="text-[10px] uppercase font-bold text-[#181c23]/40"
           style={{ letterSpacing: '0.22em' }}
         >
-          Kinetic CRM © 2026 Japan Acquisition Platform
+          Headout Japan CRM © 2026 Japan Acquisition Platform
         </div>
         <div className="flex items-center gap-6">
           {['Data Privacy', 'API Status', 'System Logs'].map((l) => (
