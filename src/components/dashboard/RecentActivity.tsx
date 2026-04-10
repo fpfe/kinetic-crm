@@ -112,24 +112,51 @@ export default function RecentActivity({ leads }: Props) {
         )}
       </div>
 
-      {/* Market Spotlight */}
-      <div className="mt-8 bg-white rounded-none p-6 relative overflow-hidden">
-        <div className="text-[11px] font-bold uppercase text-[#a83900] tracking-wider">
-          Market Spotlight
+      {/* Today's Actions */}
+      <div className="mt-8 bg-white rounded-none p-6">
+        <div className="text-[11px] font-bold uppercase text-[#a83900] tracking-wider mb-4">
+          Today&apos;s Actions
         </div>
-        <div className="mt-2 font-bold text-[17px] text-[#181c23]">
-          Hokkaido Ski Resorts
-        </div>
-        <div className="mt-2 text-[12px] text-gray-500 leading-relaxed max-w-[80%]">
-          Demand up 45% for upcoming season. Focus on premium lodge
-          acquisitions.
-        </div>
-        <span
-          className="material-symbols-outlined absolute right-3 bottom-3 text-[#181c23]"
-          style={{ fontSize: 80, opacity: 0.1 }}
-        >
-          ac_unit
-        </span>
+        {(() => {
+          const now = Date.now()
+          const day = 1000 * 60 * 60 * 24
+
+          const addedThisWeek = leads.filter(
+            (l) => now - Date.parse(l.createdAt) <= 7 * day
+          ).length
+
+          const followUpsDue = leads.filter((l) => {
+            if (l.status === 'Closed Won' || l.status === 'Closed Lost') return false
+            return now - Date.parse(l.createdAt) > 3 * day
+          }).length
+
+          const goingCold = leads.filter(
+            (l) => l.status === 'New' && now - Date.parse(l.createdAt) > 7 * day
+          ).length
+
+          const rows = [
+            { count: addedThisWeek, label: 'Leads added this week', href: '/leads' },
+            { count: followUpsDue, label: 'Needs attention (3+ days untouched)', href: '/leads' },
+            { count: goingCold, label: 'Going cold (7+ days no activity)', href: '/leads?status=New' },
+          ]
+
+          return (
+            <div className="flex flex-col gap-3">
+              {rows.map((r) => (
+                <Link
+                  key={r.label}
+                  href={r.href}
+                  className="flex items-center gap-4 px-3 py-2 rounded hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-[20px] font-bold text-[#181c23] min-w-[32px]">
+                    {r.count}
+                  </span>
+                  <span className="text-[13px] text-gray-500">{r.label}</span>
+                </Link>
+              ))}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
