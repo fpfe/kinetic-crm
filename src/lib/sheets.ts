@@ -511,6 +511,22 @@ const NOTE_COLS: (keyof Note)[] = [
 ]
 const NOTE_LAST = 'F'
 
+export async function getAllNotes(): Promise<Note[]> {
+  try {
+    const sheets = await getSheets()
+    await ensureTab(sheets, NOTES_TAB, NOTE_COLS as string[])
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: `${NOTES_TAB}!A2:${NOTE_LAST}`,
+    })
+    const rows = res.data.values ?? []
+    return rows.filter((r) => r[0]).map((r) => rowToObj<Note>(NOTE_COLS, r))
+  } catch (err) {
+    console.error('[sheets] getAllNotes failed', err)
+    throw err
+  }
+}
+
 export async function getNotesByLeadId(leadId: string): Promise<Note[]> {
   try {
     const sheets = await getSheets()

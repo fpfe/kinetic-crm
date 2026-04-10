@@ -6,6 +6,7 @@ import { calcMetrics } from '@/lib/metrics'
 import KpiCards from '@/components/dashboard/KpiCards'
 import PipelineHealth from '@/components/dashboard/PipelineHealth'
 import RecentActivity from '@/components/dashboard/RecentActivity'
+import OverdueFollowUps from '@/components/dashboard/OverdueFollowUps'
 import LeadFormModal from '@/components/leads/LeadFormModal'
 
 export default function DashboardPage() {
@@ -324,6 +325,10 @@ export default function DashboardPage() {
             conversionRate={metrics.conversionRate}
             avgCycleDays={metrics.avgCycleDays}
           />
+
+          <div className="mt-6">
+            <OverdueFollowUps />
+          </div>
 
           <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
             <PipelineHealth stageCounts={metrics.stageCounts} />
