@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-const LS_KEY = 'headout_api_key'
 const LS_CURRENT = 'deep_search_current'
 const LS_COUNTERS = 'deep_search_counters'
 
@@ -21,47 +20,6 @@ function formatShortDate(iso: string): string {
     return ''
   }
 }
-
-const SYSTEM_PROMPT = `Return ONLY a valid JSON object matching the schema below. No markdown, no prose, no code fences. If a field is unknown, use null. Do not invent data.
-
-You are a Headout Japan partnership analyst.
-
-INPUT: a Klook / GetYourGuide / Viator activity title.
-
-TASKS (use web search):
-1. Identify the REAL operating company (not the OTA listing). If jointly operated, list all parties with their roles.
-2. For each company, find: legal_name_en, legal_name_ja, homepage, hq_address, phone, inquiry_form_url, linkedin_url, likely_decision_maker_role (e.g. "BD / Licensing").
-3. Reputation signals: rating (e.g. "4.6 (12k reviews)"), other OTAs they're listed on, recent news (last 12 months, 1-2 sentences).
-4. Score partnership attractiveness 0-100 based on: demand, price premium, OTA availability, negotiation leverage, fit with Headout's bundle strategy. Include a 1-sentence score_rationale.
-5. next_action: 1-2 sentences, blunt.
-
-SCHEMA:
-{
-  "activity_title": string,
-  "companies": [
-    {
-      "legal_name_en": string,
-      "legal_name_ja": string | null,
-      "role": string,
-      "homepage": string | null,
-      "hq_address": string | null,
-      "phone": string | null,
-      "inquiry_form_url": string | null,
-      "linkedin_url": string | null,
-      "likely_decision_maker_role": string | null
-    }
-  ],
-  "reputation": {
-    "rating": string | null,
-    "listed_on_otas": string[],
-    "recent_news": string | null
-  },
-  "score": number,
-  "score_rationale": string,
-  "next_action": string
-}
-
-TONE: blunt, partnership-analyst. No fluff. No emojis.`
 
 type Company = {
   legal_name_en: string
@@ -263,42 +221,20 @@ export default function DeepSearchPage() {
       return
     }
 
-    const apiKey = window.localStorage.getItem(LS_KEY) ?? ''
-    if (!apiKey) {
-      setInfo('No Anthropic API key set. Open Settings in Lead Finder to add one.')
-      return
-    }
-
     setLoading(true)
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/deep-search/research', {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 8000,
-          system: SYSTEM_PROMPT,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: query }],
-        }),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query }),
       })
 
       if (!res.ok) {
-        const t = await res.text()
-        throw new Error(`API error ${res.status}: ${t.slice(0, 240)}`)
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(body.error || `API error ${res.status}`)
       }
-      const data = (await res.json()) as {
-        content?: Array<{ type: string; text?: string }>
-      }
-      const text = (data.content ?? [])
-        .filter((b) => b.type === 'text')
-        .map((b) => b.text ?? '')
-        .join('\n')
+      const data = (await res.json()) as { text: string }
+      const text = data.text
 
       try {
         const parsed = parseBrief(text)
