@@ -1,18 +1,18 @@
-# CLAUDE.md — kinetic-crm
+# CLAUDE.md — headout-japan-crm
 
 ---
 
 ## What This Product Is
 
-**kinetic-crm** is a sales tool for Headout's Japan BD team to acquire experience service merchants catering to overseas travelers (Europe, US, Middle East).
+**headout-japan-crm** is a sales tool for Headout's Japan BD team to acquire experience service merchants catering to overseas travelers (Europe, US, Middle East).
 
 It has two connected modules:
 
 1. **Lead Finder** — discovers potential merchant partners by city and category, pulls real company data, deduplicates, and feeds into the CRM
 2. **Merchant CRM** — tracks each merchant through the acquisition pipeline from first contact to onboarding
 
-Live: https://kinetic-crm.vercel.app  
-Repo: https://github.com/fpfe/kinetic-crm
+Live: https://headout-japan-crm.vercel.app  
+Repo: https://github.com/fpfe/headout-japan-crm
 
 ---
 

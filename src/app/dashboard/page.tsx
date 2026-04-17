@@ -79,7 +79,7 @@ export default function DashboardPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `kinetic-crm-dashboard-${
+    a.download = `headout-japan-crm-dashboard-${
       new Date().toISOString().split('T')[0]
     }.csv`
     a.click()
@@ -167,7 +167,7 @@ export default function DashboardPage() {
     )
 
     doc.save(
-      `kinetic-crm-report-${new Date().toISOString().split('T')[0]}.pdf`
+      `headout-japan-crm-report-${new Date().toISOString().split('T')[0]}.pdf`
     )
   }
 

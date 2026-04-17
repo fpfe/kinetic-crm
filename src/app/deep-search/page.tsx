@@ -142,10 +142,10 @@ export default function DeepSearchPage() {
   const [info, setInfo] = useState<string | null>(null)
   const [searchedToday, setSearchedToday] = useState(0)
   const [savedAsLeads, setSavedAsLeads] = useState(0)
-  const [dots, setDots] = useState('')
   const [hydrated, setHydrated] = useState(false)
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
   const [history, setHistory] = useState<HistoryRow[]>([])
+  const [loadingHistoryId, setLoadingHistoryId] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -199,14 +199,6 @@ export default function DeepSearchPage() {
       })
     )
   }, [hydrated, searchedToday, savedAsLeads])
-
-  useEffect(() => {
-    if (!loading) return
-    const id = window.setInterval(() => {
-      setDots((d) => (d.length >= 3 ? '' : d + '.'))
-    }, 400)
-    return () => window.clearInterval(id)
-  }, [loading])
 
   const onSearch = async () => {
     setError(null)
@@ -277,6 +269,7 @@ export default function DeepSearchPage() {
   }
 
   const loadHistory = async (id: string) => {
+    setLoadingHistoryId(id)
     try {
       const r = await fetch(`/api/deep-search-history/${id}`)
       if (!r.ok) return
@@ -289,6 +282,8 @@ export default function DeepSearchPage() {
       setCurrentHistoryId(row.id)
     } catch (e) {
       console.warn('history GET failed', e)
+    } finally {
+      setLoadingHistoryId(null)
     }
   }
 
@@ -379,8 +374,13 @@ export default function DeepSearchPage() {
             <h2 className="text-sm font-semibold text-[#1A1A1A] mb-4">
               Partner Brief
             </h2>
-            <div className="text-sm text-gray-600 py-10 text-center">
-              Researching{dots}
+            <div className="flex flex-col items-center justify-center py-10">
+              <span className="text-sm text-gray-400">Searching</span>
+              <span className="flex gap-1 mt-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-[pulse_1.2s_ease-in-out_0s_infinite]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-[pulse_1.2s_ease-in-out_0.2s_infinite]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-[pulse_1.2s_ease-in-out_0.4s_infinite]" />
+              </span>
             </div>
           </div>
         ) : error ? (
@@ -430,21 +430,34 @@ export default function DeepSearchPage() {
               RECENT RESEARCH
             </p>
             <div className="divide-y divide-gray-100">
-              {history.slice(0, 10).map((h) => (
-                <button
-                  key={h.id}
-                  onClick={() => loadHistory(h.id)}
-                  className="w-full text-left py-2 grid grid-cols-[70px_1fr_180px_40px_60px] gap-3 items-center text-xs hover:bg-gray-50 transition-colors"
-                >
-                  <span className="text-gray-500">{formatShortDate(h.created_at)}</span>
-                  <span className="text-gray-900 truncate">{h.query}</span>
-                  <span className="text-gray-600 truncate">{h.company ?? '—'}</span>
-                  <span className="font-semibold text-gray-900">{h.score ?? '—'}</span>
-                  <span className={h.saved_as_lead_id ? 'text-green-700 font-semibold' : 'text-gray-400'}>
-                    {h.saved_as_lead_id ? 'Saved' : '—'}
-                  </span>
-                </button>
-              ))}
+              {history.slice(0, 10).map((h) => {
+                const isActive = h.id === currentHistoryId
+                const isLoading = loadingHistoryId === h.id
+                return (
+                  <button
+                    key={h.id}
+                    onClick={() => loadHistory(h.id)}
+                    disabled={loadingHistoryId !== null}
+                    className={`w-full text-left py-2 px-2 grid grid-cols-[70px_1fr_180px_40px_60px] gap-3 items-center text-xs transition-colors disabled:cursor-not-allowed ${
+                      isActive
+                        ? 'bg-[#a83900]/5 border-l-2 border-[#a83900]'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-gray-500">{formatShortDate(h.created_at)}</span>
+                    <span className="text-gray-900 truncate">{h.query}</span>
+                    <span className="text-gray-600 truncate">{h.company ?? '—'}</span>
+                    {isLoading ? (
+                      <span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-[#a83900] rounded-full animate-spin" />
+                    ) : (
+                      <span className="font-semibold text-gray-900">{h.score ?? '—'}</span>
+                    )}
+                    <span className={h.saved_as_lead_id ? 'text-green-700 font-semibold' : 'text-gray-400'}>
+                      {h.saved_as_lead_id ? 'Saved' : '—'}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
             {history.length > 10 && (
               <div className="mt-3">

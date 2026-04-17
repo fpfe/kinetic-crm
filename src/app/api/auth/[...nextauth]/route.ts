@@ -32,7 +32,7 @@ const handler = NextAuth({
         return {
           id: 'shared',
           name: 'Team Member',
-          email: 'team@kinetic-crm',
+          email: 'team@headout-japan-crm',
         }
       },
     }),
