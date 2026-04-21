@@ -84,7 +84,7 @@ export async function getLeads(): Promise<Lead[]> {
       range: RANGE,
     })
     const rows = res.data.values ?? []
-    return rows.filter((r) => r[0]).map(rowToLead)
+    return rows.filter((r) => r[0]).map(rowToLead).reverse()
   } catch (err) {
     console.error('[sheets] getLeads failed', err)
     throw err

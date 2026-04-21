@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 const LS_CURRENT = 'deep_search_current'
 const LS_COUNTERS = 'deep_search_counters'
@@ -60,6 +60,13 @@ function scoreColor100(score: number): string {
   if (score >= 70) return 'bg-green-500'
   if (score >= 40) return 'bg-amber-500'
   return 'bg-red-500'
+}
+
+function scoreTextColor(score: number | null): string {
+  if (score === null) return 'text-gray-400'
+  if (score >= 70) return 'text-green-700'
+  if (score >= 40) return 'text-amber-700'
+  return 'text-red-700'
 }
 
 function deriveRegion(addr: string | null): string {
@@ -134,7 +141,6 @@ function parseBrief(raw: string): Brief {
 
 export default function DeepSearchPage() {
   const [query, setQuery] = useState('')
-  const [mode, setMode] = useState<'single' | 'bulk'>('single')
   const [loading, setLoading] = useState(false)
   const [brief, setBrief] = useState<Brief | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -151,9 +157,8 @@ export default function DeepSearchPage() {
     try {
       const cur = window.localStorage.getItem(LS_CURRENT)
       if (cur) {
-        const { query: q, mode: m, brief: b, historyId: hid } = JSON.parse(cur)
+        const { query: q, brief: b, historyId: hid } = JSON.parse(cur)
         if (typeof q === 'string') setQuery(q)
-        if (m === 'single' || m === 'bulk') setMode(m)
         if (b) setBrief(b)
         if (typeof hid === 'string') setCurrentHistoryId(hid)
       }
@@ -176,10 +181,10 @@ export default function DeepSearchPage() {
     if (brief) {
       window.localStorage.setItem(
         LS_CURRENT,
-        JSON.stringify({ query, mode, brief, historyId: currentHistoryId })
+        JSON.stringify({ query, brief, historyId: currentHistoryId })
       )
     }
-  }, [hydrated, brief, query, mode, currentHistoryId])
+  }, [hydrated, brief, query, currentHistoryId])
 
   useEffect(() => {
     fetch('/api/deep-search-history')
@@ -207,11 +212,6 @@ export default function DeepSearchPage() {
     setBrief(null)
     setCurrentHistoryId(null)
     window.localStorage.removeItem(LS_CURRENT)
-
-    if (mode === 'bulk') {
-      setInfo('Bulk mode coming in next step')
-      return
-    }
 
     setLoading(true)
     try {
@@ -311,35 +311,10 @@ export default function DeepSearchPage() {
             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-none bg-gray-50 focus:bg-white focus:border-[#a83900] outline-none transition-colors resize-none"
           />
 
-          <div className="flex gap-4 mt-3 mb-3 text-xs text-gray-600">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                value="single"
-                checked={mode === 'single'}
-                onChange={() => setMode('single')}
-                className="accent-[#a83900]"
-              />
-              Single
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                value="bulk"
-                checked={mode === 'bulk'}
-                onChange={() => setMode('bulk')}
-                className="accent-[#a83900]"
-              />
-              Bulk (one per line)
-            </label>
-          </div>
-
           <button
             onClick={onSearch}
             disabled={!query.trim() || loading}
-            className="w-full py-2.5 text-sm font-semibold text-white bg-[#a83900] rounded-none hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+            className="w-full mt-3 py-2.5 text-sm font-semibold text-white bg-[#a83900] rounded-none hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
@@ -450,7 +425,7 @@ export default function DeepSearchPage() {
                     {isLoading ? (
                       <span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-[#a83900] rounded-full animate-spin" />
                     ) : (
-                      <span className="font-semibold text-gray-900">{h.score ?? '—'}</span>
+                      <span className={`font-semibold ${scoreTextColor(h.score)}`}>{h.score ?? '—'}</span>
                     )}
                     <span className={h.saved_as_lead_id ? 'text-green-700 font-semibold' : 'text-gray-400'}>
                       {h.saved_as_lead_id ? 'Saved' : '—'}

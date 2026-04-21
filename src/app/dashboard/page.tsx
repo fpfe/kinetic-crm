@@ -7,10 +7,23 @@ import KpiCards from '@/components/dashboard/KpiCards'
 import PipelineHealth from '@/components/dashboard/PipelineHealth'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import OverdueFollowUps from '@/components/dashboard/OverdueFollowUps'
+import DeepSearchActivity from '@/components/dashboard/DeepSearchActivity'
+import LeadSourceBreakdown from '@/components/dashboard/LeadSourceBreakdown'
 import LeadFormModal from '@/components/leads/LeadFormModal'
+
+type DeepSearchHistoryRow = {
+  id: string
+  created_at: string
+  query: string
+  activity_title: string | null
+  score: number | null
+  company: string | null
+  saved_as_lead_id: string | null
+}
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([])
+  const [history, setHistory] = useState<DeepSearchHistoryRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -38,6 +51,24 @@ export default function DashboardPage() {
   }, [refresh])
 
   useEffect(() => {
+    let cancelled = false
+    async function loadHistory() {
+      try {
+        const res = await fetch('/api/deep-search-history', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data)) setHistory(data)
+      } catch {
+        // non-fatal; dashboard still renders
+      }
+    }
+    loadHistory()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     if (!menuOpen) return
     function onClick(e: MouseEvent) {
       if (
@@ -52,6 +83,33 @@ export default function DashboardPage() {
   }, [menuOpen])
 
   const metrics = useMemo(() => calcMetrics(leads), [leads])
+
+  const weekMetrics = useMemo(() => {
+    const weekMs = 7 * 24 * 60 * 60 * 1000
+    const cutoff = Date.now() - weekMs
+    const leadsThisWeek = leads.filter((l) => {
+      const t = Date.parse(l.createdAt)
+      return !Number.isNaN(t) && t >= cutoff
+    }).length
+    const searchesThisWeek = history.filter((h) => {
+      const t = Date.parse(h.created_at)
+      return !Number.isNaN(t) && t >= cutoff
+    })
+    const scored = searchesThisWeek.filter(
+      (h): h is DeepSearchHistoryRow & { score: number } => typeof h.score === 'number'
+    )
+    const avgScore =
+      scored.length > 0
+        ? Math.round(
+            scored.reduce((sum, h) => sum + h.score, 0) / scored.length
+          )
+        : null
+    return {
+      leadsThisWeek,
+      deepSearchesThisWeek: searchesThisWeek.length,
+      avgScore,
+    }
+  }, [leads, history])
 
   function exportCSV(leads: Lead[]) {
     const headers = [
@@ -321,13 +379,19 @@ export default function DashboardPage() {
       ) : (
         <>
           <KpiCards
-            acquisitionRate={metrics.acquisitionRate}
-            conversionRate={metrics.conversionRate}
-            avgCycleDays={metrics.avgCycleDays}
+            totalLeads={leads.length}
+            leadsThisWeek={weekMetrics.leadsThisWeek}
+            deepSearchesThisWeek={weekMetrics.deepSearchesThisWeek}
+            avgScore={weekMetrics.avgScore}
           />
 
           <div className="mt-6">
             <OverdueFollowUps />
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <DeepSearchActivity history={history} />
+            <LeadSourceBreakdown leads={leads} />
           </div>
 
           <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
