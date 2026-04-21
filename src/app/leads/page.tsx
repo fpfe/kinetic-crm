@@ -251,6 +251,10 @@ export default function LeadsPage() {
         open={!!viewingLead}
         lead={viewingLead}
         onClose={() => setViewingLead(null)}
+        onEdit={(lead) => {
+          setViewingLead(null)
+          openEdit(lead)
+        }}
       />
     </div>
   )

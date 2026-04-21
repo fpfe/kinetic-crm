@@ -7,9 +7,10 @@ type Props = {
   open: boolean
   lead: Lead | null
   onClose: () => void
+  onEdit?: (lead: Lead) => void
 }
 
-export default function ViewLeadModal({ open, lead, onClose }: Props) {
+export default function ViewLeadModal({ open, lead, onClose, onEdit }: Props) {
   if (!open || !lead) return null
 
   return (
@@ -28,20 +29,23 @@ export default function ViewLeadModal({ open, lead, onClose }: Props) {
               Lead Details
             </div>
             <h2 className="font-display font-extrabold text-2xl text-[#181c23] mt-1">
-              {lead.contactName}
+              {lead.contactName || lead.company}
             </h2>
-            <div className="text-sm text-gray-500">{lead.company}</div>
+            {lead.contactName && lead.company && (
+              <div className="text-sm text-gray-500">{lead.company}</div>
+            )}
           </div>
           <StatusBadge status={lead.status} />
         </div>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
-          <Row label="Email" value={lead.email} />
-          <Row label="Phone" value={lead.phone} />
+          <Row label="Email" value={lead.email} link={lead.email ? `mailto:${lead.email}` : undefined} />
+          <Row label="Phone" value={lead.phone} link={lead.phone ? `tel:${lead.phone}` : undefined} />
           <Row label="Service Type" value={lead.serviceType} />
           <Row label="Lead Source" value={lead.leadSource} />
           <Row label="Region" value={lead.region} />
           <Row label="Assigned To" value={lead.assignedTo} />
+          <Row label="Deal Value" value={lead.dealValue} />
           <Row
             label="Created"
             value={
@@ -50,7 +54,6 @@ export default function ViewLeadModal({ open, lead, onClose }: Props) {
                 : '—'
             }
           />
-          <Row label="ID" value={lead.id} mono />
         </dl>
 
         {lead.notes && (
@@ -58,13 +61,24 @@ export default function ViewLeadModal({ open, lead, onClose }: Props) {
             <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1">
               Notes
             </div>
-            <div className="text-[13px] text-[#181c23] bg-[#ebedf8] rounded-none p-3 whitespace-pre-wrap">
-              {lead.notes}
+            <div className="text-[13px] text-[#181c23] bg-gray-50 border border-gray-200 rounded-none p-3 whitespace-pre-wrap">
+              <NotesContent text={lead.notes} />
             </div>
           </div>
         )}
 
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end gap-2 mt-6">
+          {onEdit && (
+            <button
+              onClick={() => {
+                onClose()
+                onEdit(lead)
+              }}
+              className="text-sm font-semibold px-6 py-2.5 rounded-none border border-gray-300 text-gray-900 hover:border-gray-500 transition-colors"
+            >
+              Edit
+            </button>
+          )}
           <button
             onClick={onClose}
             className="brand-gradient text-white text-sm font-semibold px-6 py-2.5 rounded-none"
@@ -77,26 +91,59 @@ export default function ViewLeadModal({ open, lead, onClose }: Props) {
   )
 }
 
+function NotesContent({ text }: { text: string }) {
+  // Split notes text and make URLs clickable
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = text.split(urlRegex)
+  return (
+    <>
+      {parts.map((part, i) =>
+        urlRegex.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#a83900] hover:underline break-all"
+          >
+            {part}
+          </a>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  )
+}
+
 function Row({
   label,
   value,
-  mono,
+  link,
 }: {
   label: string
   value: string
-  mono?: boolean
+  link?: string
 }) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
         {label}
       </div>
-      <div
-        className="text-[#181c23] mt-0.5 truncate"
-        style={mono ? { fontFamily: 'monospace', fontSize: 11 } : undefined}
-      >
-        {value || '—'}
-      </div>
+      {value && link ? (
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#a83900] hover:underline mt-0.5 block truncate"
+        >
+          {value}
+        </a>
+      ) : (
+        <div className="text-[#181c23] mt-0.5 truncate">
+          {value || '—'}
+        </div>
+      )}
     </div>
   )
 }
