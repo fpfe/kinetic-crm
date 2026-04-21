@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 const LS_CURRENT = 'deep_search_current'
@@ -141,6 +141,14 @@ function parseBrief(raw: string): Brief {
 }
 
 export default function DeepSearchPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-gray-400 py-10 text-center">Loading...</div>}>
+      <DeepSearchInner />
+    </Suspense>
+  )
+}
+
+function DeepSearchInner() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [query, setQuery] = useState('')
