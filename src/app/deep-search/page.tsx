@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 const LS_CURRENT = 'deep_search_current'
 const LS_COUNTERS = 'deep_search_counters'
@@ -140,6 +141,8 @@ function parseBrief(raw: string): Brief {
 }
 
 export default function DeepSearchPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [brief, setBrief] = useState<Brief | null>(null)
@@ -152,6 +155,28 @@ export default function DeepSearchPage() {
   const [currentHistoryId, setCurrentHistoryId] = useState<string | null>(null)
   const [history, setHistory] = useState<HistoryRow[]>([])
   const [loadingHistoryId, setLoadingHistoryId] = useState<string | null>(null)
+
+  // Load brief from ?id= URL parameter (shareable link)
+  useEffect(() => {
+    const sharedId = searchParams.get('id')
+    if (sharedId) {
+      setLoading(true)
+      fetch(`/api/deep-search-history/${sharedId}`)
+        .then((r) => {
+          if (!r.ok) throw new Error('Brief not found')
+          return r.json()
+        })
+        .then((row) => {
+          setBrief(row.brief as Brief)
+          setQuery(row.query ?? '')
+          setCurrentHistoryId(row.id)
+        })
+        .catch(() => {
+          setError('Could not load shared brief. It may have been deleted.')
+        })
+        .finally(() => setLoading(false))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     try {
@@ -175,6 +200,19 @@ export default function DeepSearchPage() {
     }
     setHydrated(true)
   }, [])
+
+  // Update URL when currentHistoryId changes (shareable link)
+  useEffect(() => {
+    if (!hydrated) return
+    if (currentHistoryId) {
+      const url = `/deep-search?id=${currentHistoryId}`
+      if (window.location.pathname + window.location.search !== url) {
+        router.replace(url, { scroll: false })
+      }
+    } else if (window.location.search) {
+      router.replace('/deep-search', { scroll: false })
+    }
+  }, [hydrated, currentHistoryId, router])
 
   useEffect(() => {
     if (!hydrated) return
@@ -460,6 +498,7 @@ function BriefCard({
   onLeadLinked: (historyId: string, leadId: string) => void
 }) {
   const [copied, setCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedThisResult, setSavedThisResult] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
@@ -479,6 +518,18 @@ function BriefCard({
       window.setTimeout(() => setCopied(false), 1500)
     } catch {
       /* clipboard permission denied; silently ignore */
+    }
+  }
+
+  const onCopyLink = async () => {
+    if (!historyId) return
+    try {
+      const url = `${window.location.origin}/deep-search?id=${historyId}`
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 1500)
+    } catch {
+      /* clipboard permission denied */
     }
   }
 
@@ -674,6 +725,14 @@ function BriefCard({
         >
           {copied ? 'Copied ✓' : 'Copy Brief'}
         </button>
+        {historyId && (
+          <button
+            onClick={onCopyLink}
+            className="px-4 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-none hover:border-gray-500 transition-colors"
+          >
+            {linkCopied ? 'Link Copied ✓' : 'Copy Link'}
+          </button>
+        )}
       </div>
     </div>
   )
