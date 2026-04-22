@@ -39,7 +39,7 @@ export default function ViewLeadModal({ open, lead, onClose, onEdit }: Props) {
         </div>
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[13px]">
-          <Row label="Email" value={lead.email} link={lead.email ? `mailto:${lead.email}` : undefined} />
+          <Row label="Email" value={lead.email} link={lead.email ? `https://mail.google.com/mail/?authuser=juns810208@gmail.com&view=cm&to=${encodeURIComponent(lead.email)}` : undefined} newTab={false} />
           <Row label="Phone" value={lead.phone} link={lead.phone ? `tel:${lead.phone}` : undefined} />
           <Row label="Service Type" value={lead.serviceType} />
           <Row label="Lead Source" value={lead.leadSource} />
@@ -120,10 +120,12 @@ function Row({
   label,
   value,
   link,
+  newTab = true,
 }: {
   label: string
   value: string
   link?: string
+  newTab?: boolean
 }) {
   return (
     <div>
@@ -133,8 +135,7 @@ function Row({
       {value && link ? (
         <a
           href={link}
-          target="_blank"
-          rel="noopener noreferrer"
+          {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
           className="text-[#a83900] hover:underline mt-0.5 block truncate"
         >
           {value}

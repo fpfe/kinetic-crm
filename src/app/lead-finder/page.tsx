@@ -332,10 +332,13 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
   const [addCrmError, setAddCrmError] = useState<string | null>(null)
 
   const addToCrm = useCallback(
-    async (lead: FinderLead) => {
+    async (lead: FinderLead, enrichedNotes?: string) => {
       setAddingCrm(lead.id)
       setAddCrmError(null)
       try {
+        const notes = enrichedNotes
+          ? enrichedNotes
+          : `${lead.description} | Inbound: ${lead.inbound_strategy ?? 'n/a'} | Klook gap: ${lead.klook_gap ?? 'n/a'}`
         const payload = {
           contactName: lead.contact_person ?? lead.name,
           email: lead.contact_email ?? '',
@@ -346,7 +349,7 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
           assignedTo: 'Seungjun Ahn',
           status: 'New',
           region: lead.city,
-          notes: `${lead.description} | Inbound: ${lead.inbound_strategy ?? 'n/a'} | Klook gap: ${lead.klook_gap ?? 'n/a'}`,
+          notes,
           dealValue: '',
         }
         const res = await fetch('/api/leads', {
@@ -515,7 +518,7 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
             addError={addCrmError}
             onBack={() => setSelectedId(null)}
             onGenerateEmail={() => setEmailLeadId(selected.id)}
-            onAddToCrm={() => addToCrm(selected)}
+            onAddToCrm={(enrichedNotes) => addToCrm(selected, enrichedNotes)}
           />
         ) : (
           <ListView
@@ -714,6 +717,29 @@ function LeadCard({
 /* ============================================================
    Detail View
    ============================================================ */
+type DeepBrief = {
+  activity_title: string
+  companies: Array<{
+    legal_name_en: string
+    legal_name_ja: string | null
+    role: string
+    homepage: string | null
+    hq_address: string | null
+    phone: string | null
+    inquiry_form_url: string | null
+    linkedin_url: string | null
+    likely_decision_maker_role: string | null
+  }>
+  reputation: {
+    rating: string | null
+    listed_on_otas: string[]
+    recent_news: string | null
+  }
+  score: number
+  score_rationale: string
+  next_action: string
+}
+
 function DetailView({
   lead,
   isAdded,
@@ -729,8 +755,68 @@ function DetailView({
   addError: string | null
   onBack: () => void
   onGenerateEmail: () => void
-  onAddToCrm: () => void
+  onAddToCrm: (enrichedNotes?: string) => void
 }) {
+  const [deepBrief, setDeepBrief] = useState<DeepBrief | null>(null)
+  const [deepLoading, setDeepLoading] = useState(false)
+  const [deepError, setDeepError] = useState<string | null>(null)
+
+  const runDeepResearch = async () => {
+    setDeepLoading(true)
+    setDeepError(null)
+    try {
+      const res = await fetch('/api/deep-search/research', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: lead.name }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(body.error || `API error ${res.status}`)
+      }
+      const data = (await res.json()) as { text: string }
+      let text = data.text.trim()
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+      const m = text.match(/\{[\s\S]*\}/)
+      const parsed = JSON.parse(m ? m[0] : text) as DeepBrief
+      setDeepBrief(parsed)
+
+      // Save to Supabase deep_search_history
+      fetch('/api/deep-search-history', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: lead.name, brief: parsed }),
+      }).catch(() => {})
+    } catch (e) {
+      setDeepError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeepLoading(false)
+    }
+  }
+
+  const buildEnrichedNotes = (): string => {
+    const parts: string[] = []
+    // Lead Finder data
+    parts.push(lead.description)
+    if (lead.inbound_strategy) parts.push(`Inbound: ${lead.inbound_strategy}`)
+    if (lead.klook_gap) parts.push(`Klook gap: ${lead.klook_gap}`)
+    // Deep Search data
+    if (deepBrief) {
+      const c = deepBrief.companies[0]
+      if (c?.homepage) parts.push(`Homepage: ${c.homepage}`)
+      if (c?.inquiry_form_url) parts.push(`Inquiry form: ${c.inquiry_form_url}`)
+      if (c?.linkedin_url) parts.push(`LinkedIn: ${c.linkedin_url}`)
+      if (c?.likely_decision_maker_role) parts.push(`Decision maker: ${c.likely_decision_maker_role}`)
+      parts.push(`Partnership score: ${deepBrief.score}/100 — ${deepBrief.score_rationale}`)
+      if (deepBrief.reputation.rating) parts.push(`Rating: ${deepBrief.reputation.rating}`)
+      if (deepBrief.reputation.listed_on_otas?.length)
+        parts.push(`Listed on: ${deepBrief.reputation.listed_on_otas.join(', ')}`)
+      if (deepBrief.reputation.recent_news) parts.push(`News: ${deepBrief.reputation.recent_news}`)
+      parts.push(`Next action: ${deepBrief.next_action}`)
+    }
+    return parts.join('\n')
+  }
+
   return (
     <div>
       <button
@@ -842,7 +928,15 @@ function DetailView({
           <p>
             {lead.contact_email && (
               <a
-                href={`mailto:${lead.contact_email}`}
+                href={`https://mail.google.com/mail/?authuser=juns810208@gmail.com&view=cm&to=${encodeURIComponent(lead.contact_email)}`}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.open(
+                    `https://mail.google.com/mail/?authuser=juns810208@gmail.com&view=cm&to=${encodeURIComponent(lead.contact_email!)}`,
+                    'gmail_compose',
+                    'width=680,height=600,left=200,top=100'
+                  )
+                }}
                 className="text-[#a83900] hover:underline"
               >
                 {lead.contact_email}
@@ -852,6 +946,103 @@ function DetailView({
           </p>
         </DetailSection>
 
+        {/* Deep Research section */}
+        {deepBrief ? (
+          <div className="mt-6 border-t border-gray-200 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] tracking-[0.18em] font-semibold text-[#a83900]">
+                DEEP RESEARCH RESULTS
+              </p>
+              <span
+                className={`px-2.5 h-7 min-w-[2rem] rounded-none flex items-center justify-center text-white font-bold text-xs ${
+                  deepBrief.score >= 70 ? 'bg-green-500' : deepBrief.score >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+              >
+                {deepBrief.score}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">{deepBrief.score_rationale}</p>
+
+            {deepBrief.companies.map((c, i) => (
+              <div key={i} className="border border-gray-200 p-4 mb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-gray-900">{c.legal_name_en}</div>
+                    {c.legal_name_ja && <div className="text-xs text-gray-500 mt-0.5">{c.legal_name_ja}</div>}
+                  </div>
+                  <span className="px-2 py-0.5 text-[11px] rounded-none bg-gray-100 text-gray-600">{c.role}</span>
+                </div>
+                <div className="mt-3 text-sm text-gray-800 space-y-1">
+                  {c.homepage && (
+                    <div>
+                      <a href={c.homepage} target="_blank" rel="noopener noreferrer" className="text-[#a83900] hover:underline">
+                        {c.homepage}
+                      </a>
+                    </div>
+                  )}
+                  {c.hq_address && <div>{c.hq_address}</div>}
+                  {c.phone && <div>{c.phone}</div>}
+                  {c.inquiry_form_url && (
+                    <div>
+                      <a href={c.inquiry_form_url} target="_blank" rel="noopener noreferrer" className="text-[#a83900] hover:underline">
+                        Inquiry form
+                      </a>
+                    </div>
+                  )}
+                  {c.linkedin_url && (
+                    <div>
+                      <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-[#a83900] hover:underline">
+                        LinkedIn
+                      </a>
+                    </div>
+                  )}
+                </div>
+                {c.likely_decision_maker_role && (
+                  <div className="mt-3">
+                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-none bg-[#a83900]/10 text-[#a83900]">
+                      {c.likely_decision_maker_role}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {deepBrief.reputation.rating && (
+              <DetailSection title="Rating">{deepBrief.reputation.rating}</DetailSection>
+            )}
+            {deepBrief.reputation.listed_on_otas?.length > 0 && (
+              <DetailSection title="Listed on OTAs">
+                <div className="flex flex-wrap gap-1.5">
+                  {deepBrief.reputation.listed_on_otas.map((o) => (
+                    <span key={o} className="px-2 py-0.5 text-[11px] rounded-none bg-gray-100 text-gray-600">{o}</span>
+                  ))}
+                </div>
+              </DetailSection>
+            )}
+            {deepBrief.reputation.recent_news && (
+              <DetailSection title="Recent news (Deep Search)">{deepBrief.reputation.recent_news}</DetailSection>
+            )}
+            <DetailSection title="Next action">
+              <div className="bg-[#fff5ef] border border-[#fde4d3] p-3 text-sm text-gray-800">
+                {deepBrief.next_action}
+              </div>
+            </DetailSection>
+          </div>
+        ) : deepLoading ? (
+          <div className="mt-6 border-t border-gray-200 pt-5">
+            <div className="flex flex-col items-center py-6">
+              <div className="w-6 h-6 border-2 border-gray-200 border-t-[#a83900] rounded-full animate-spin" />
+              <span className="text-sm text-gray-400 mt-2">Running Deep Research...</span>
+            </div>
+          </div>
+        ) : deepError ? (
+          <div className="mt-6 border-t border-gray-200 pt-5">
+            <div className="p-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none">
+              Deep Research error: {deepError}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-2 mt-6">
           <button
             onClick={onGenerateEmail}
@@ -859,6 +1050,14 @@ function DetailView({
           >
             Generate Cold Email
           </button>
+          {!deepBrief && !deepLoading && (
+            <button
+              onClick={runDeepResearch}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-none hover:opacity-90"
+            >
+              Deep Research
+            </button>
+          )}
           {isAdded ? (
             <button
               disabled
@@ -868,17 +1067,15 @@ function DetailView({
             </button>
           ) : (
             <button
-              onClick={onAddToCrm}
+              onClick={() => onAddToCrm(deepBrief ? buildEnrichedNotes() : undefined)}
               disabled={adding}
               className="px-4 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-none hover:border-gray-500 disabled:opacity-60"
             >
-              {adding ? 'Adding...' : 'Add to CRM'}
+              {adding ? 'Adding...' : deepBrief ? 'Add to CRM (Enriched)' : 'Add to CRM'}
             </button>
           )}
           <a
-            href="https://headout-japan-crm.vercel.app/leads"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/leads"
             className="px-4 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-none hover:border-gray-500"
           >
             Open in CRM
