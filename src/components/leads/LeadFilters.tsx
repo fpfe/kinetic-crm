@@ -8,12 +8,14 @@ export type FiltersState = {
   serviceType: string // '' = all
   status: LeadStatus | ''
   dateRange: DateRange
+  assignedTo: string // '' = all
 }
 
 export const EMPTY_FILTERS: FiltersState = {
   serviceType: '',
   status: '',
   dateRange: 'any',
+  assignedTo: '',
 }
 
 type Props = {
@@ -134,6 +136,21 @@ export default function LeadFilters({
         <option value="7d">Last 7 days</option>
         <option value="30d">Last 30 days</option>
         <option value="90d">Last 90 days</option>
+      </select>
+
+      <select
+        style={pillSelectStyle}
+        value={filters.assignedTo}
+        onChange={(e) =>
+          onChange({ ...filters, assignedTo: e.target.value })
+        }
+      >
+        <option value="">Assigned To · All</option>
+        {members.map((m) => (
+          <option key={m.id} value={m.name}>
+            {m.name}
+          </option>
+        ))}
       </select>
 
       {selectedCount > 0 && (

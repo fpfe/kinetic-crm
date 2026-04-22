@@ -5,8 +5,10 @@ import Link from 'next/link'
 import {
   ColumnDef,
   RowSelectionState,
+  SortingState,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import type { Lead, LeadStatus } from '@/types'
@@ -72,6 +74,7 @@ export default function LeadTable({
   onStatusChange,
 }: Props) {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null)
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const columns = useMemo<ColumnDef<Lead>[]>(
     () => [
@@ -96,7 +99,9 @@ export default function LeadTable({
       },
       {
         id: 'contact',
+        accessorKey: 'contactName',
         header: 'Contact Person',
+        enableSorting: true,
         cell: ({ row }) => {
           const lead = row.original
           if (!lead.contactName && !lead.email) return null
@@ -116,7 +121,9 @@ export default function LeadTable({
       },
       {
         id: 'company',
+        accessorKey: 'company',
         header: 'Company',
+        enableSorting: true,
         cell: ({ row }) => {
           const lead = row.original
           return (
@@ -138,6 +145,7 @@ export default function LeadTable({
       {
         accessorKey: 'serviceType',
         header: 'Service Type',
+        enableSorting: true,
         cell: ({ getValue }) => {
           const value = getValue<string>()
           return (
@@ -153,6 +161,7 @@ export default function LeadTable({
       {
         accessorKey: 'leadSource',
         header: 'Lead Source',
+        enableSorting: true,
         cell: ({ getValue }) => {
           const value = getValue<string>()
           return (
@@ -166,6 +175,7 @@ export default function LeadTable({
       {
         accessorKey: 'assignedTo',
         header: 'Assigned To',
+        enableSorting: true,
         cell: ({ getValue }) => {
           const value = getValue<string>()
           return (
@@ -178,6 +188,7 @@ export default function LeadTable({
       {
         accessorKey: 'status',
         header: 'Status',
+        enableSorting: true,
         cell: ({ row }) => {
           const lead = row.original
           if (editingStatusId === lead.id) {
@@ -265,7 +276,7 @@ export default function LeadTable({
   const table = useReactTable({
     data: leads,
     columns,
-    state: { rowSelection },
+    state: { rowSelection, sorting },
     enableRowSelection: true,
     getRowId: (row) => row.id,
     onRowSelectionChange: (updater) => {
@@ -273,7 +284,9 @@ export default function LeadTable({
         typeof updater === 'function' ? updater(rowSelection) : updater
       onRowSelectionChange(next)
     },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   return (
@@ -284,10 +297,19 @@ export default function LeadTable({
           className={`grid ${GRID_COLS} px-5 py-3 text-[11px] font-bold tracking-wider text-gray-500 uppercase`}
         >
           {hg.headers.map((header) => (
-            <div key={header.id}>
+            <div
+              key={header.id}
+              className={`min-w-0 overflow-hidden ${header.column.getCanSort() ? 'cursor-pointer select-none flex items-center gap-1' : ''}`}
+              onClick={header.column.getToggleSortingHandler()}
+            >
               {header.isPlaceholder
                 ? null
                 : flexRender(header.column.columnDef.header, header.getContext())}
+              {header.column.getCanSort() && (
+                <span className="text-[10px]">
+                  {{ asc: '▲', desc: '▼' }[header.column.getIsSorted() as string] ?? '⇅'}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -301,7 +323,7 @@ export default function LeadTable({
             style={row.getIsSelected() ? { background: '#ebedf8' } : undefined}
           >
             {row.getVisibleCells().map((cell) => (
-              <div key={cell.id}>
+              <div key={cell.id} className="min-w-0 overflow-hidden">
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </div>
             ))}

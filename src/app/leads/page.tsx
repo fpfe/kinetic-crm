@@ -10,6 +10,7 @@ import LeadFilters, {
 } from '@/components/leads/LeadFilters'
 import LeadFormModal from '@/components/leads/LeadFormModal'
 import ViewLeadModal from '@/components/leads/ViewLeadModal'
+import DuplicateCheckModal from '@/components/leads/DuplicateCheckModal'
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -25,6 +26,7 @@ export default function LeadsPage() {
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [viewingLead, setViewingLead] = useState<Lead | null>(null)
+  const [dupeCheckOpen, setDupeCheckOpen] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -76,6 +78,8 @@ export default function LeadsPage() {
       if (filters.serviceType && l.serviceType !== filters.serviceType)
         return false
       if (filters.status && l.status !== filters.status) return false
+      if (filters.assignedTo && l.assignedTo !== filters.assignedTo)
+        return false
       if (filters.dateRange !== 'any') {
         const cutoff = now - (ranges[filters.dateRange] ?? 0)
         const t = Date.parse(l.createdAt)
@@ -191,6 +195,12 @@ export default function LeadsPage() {
             {hotCount} HOT MOMENTUM
           </span>
           <button
+            onClick={() => setDupeCheckOpen(true)}
+            className="text-sm font-semibold px-5 py-2.5 rounded-none border border-gray-300 text-gray-700 hover:border-[#a83900] hover:text-[#a83900] transition"
+          >
+            Check Duplicates
+          </button>
+          <button
             onClick={openCreate}
             className="brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-none shadow-sm hover:opacity-95 transition"
           >
@@ -254,6 +264,16 @@ export default function LeadsPage() {
         onEdit={(lead) => {
           setViewingLead(null)
           openEdit(lead)
+        }}
+      />
+
+      <DuplicateCheckModal
+        open={dupeCheckOpen}
+        leads={leads}
+        onClose={() => setDupeCheckOpen(false)}
+        onMerged={() => {
+          setDupeCheckOpen(false)
+          refresh()
         }}
       />
     </div>

@@ -190,9 +190,8 @@ export default function LeadFormModal({
             </Field>
             <Field label="Email">
               <input
-                required
-                type="email"
                 style={inputStyle}
+                placeholder="Optional"
                 value={form.email}
                 onChange={(e) => update('email', e.target.value)}
               />
