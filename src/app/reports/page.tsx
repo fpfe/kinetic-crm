@@ -9,6 +9,8 @@ import KpiSummaryRow from '@/components/reports/KpiSummaryRow'
 import RepPerformanceTable from '@/components/reports/RepPerformanceTable'
 import ServiceTypeBreakdown from '@/components/reports/ServiceTypeBreakdown'
 import InsightsPanel from '@/components/reports/InsightsPanel'
+import ConversionFunnel from '@/components/reports/ConversionFunnel'
+import LeadSourceChart from '@/components/reports/LeadSourceChart'
 
 const DATE_LABELS: Record<ReportFilterValue['dateRange'], string> = {
   all: 'all leads',
@@ -216,6 +218,16 @@ export default function ReportsPage() {
       ) : (
         <div className="flex flex-col gap-8">
           <KpiSummaryRow leads={filtered} />
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="xl:col-span-2">
+              <ConversionFunnel leads={filtered} />
+            </div>
+            <div className="xl:col-span-1">
+              <LeadSourceChart leads={filtered} />
+            </div>
+          </div>
+
           <RepPerformanceTable leads={filtered} />
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             <div className="xl:col-span-2">

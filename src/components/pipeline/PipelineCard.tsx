@@ -40,6 +40,8 @@ function daysSince(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - t) / 86400000))
 }
 
+const STALE_DAYS = 7
+
 function FooterActivity({ lead }: { lead: Lead }) {
   if (lead.status === 'Negotiation') {
     return (
@@ -88,6 +90,10 @@ type Props = { lead: Lead; index: number }
 
 export default function PipelineCard({ lead, index }: Props) {
   const isHot = lead.status === 'Negotiation' || lead.status === 'Proposal Sent'
+  const isClosed = lead.status === 'Closed Won' || lead.status === 'Closed Lost'
+  const age = daysSince(lead.createdAt)
+  const isStale = !isClosed && age >= STALE_DAYS
+
   return (
     <Draggable draggableId={lead.id} index={index}>
       {(provided, snapshot) => (
@@ -95,7 +101,7 @@ export default function PipelineCard({ lead, index }: Props) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className="bg-white relative transition-transform"
+          className="bg-white relative transition-transform group"
           style={{
             borderRadius: 0,
             padding: '1.25rem',
@@ -107,7 +113,9 @@ export default function PipelineCard({ lead, index }: Props) {
             transform: provided.draggableProps.style?.transform,
             ...(isHot
               ? { borderLeft: '4px solid #e4006d' }
-              : {}),
+              : isStale
+                ? { borderLeft: '4px solid #f59e0b' }
+                : {}),
             ...provided.draggableProps.style,
           }}
           onMouseEnter={(e) => {
@@ -117,14 +125,69 @@ export default function PipelineCard({ lead, index }: Props) {
             e.currentTarget.style.borderColor = 'transparent'
           }}
         >
-          <div className="flex items-start justify-between mb-2">
-            <div
-              className="text-[10px] uppercase font-bold tracking-wider"
-              style={{ color: '#9c88bf' }}
+          {/* Quick actions — visible on hover */}
+          <div
+            className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1 z-10 bg-white px-1 py-0.5"
+            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+          >
+            {lead.email && lead.email !== 'N/a' && (
+              <button
+                type="button"
+                title="Send email"
+                className="p-1.5 text-gray-400 hover:text-[#a83900] transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  window.open(
+                    `https://mail.google.com/mail/?authuser=juns810208@gmail.com&view=cm&to=${encodeURIComponent(lead.email)}`,
+                    'gmail_compose',
+                    'width=680,height=600,left=200,top=100'
+                  )
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+              </button>
+            )}
+            <Link
+              href={`/leads/${lead.id}`}
+              title="View details"
+              className="p-1.5 text-gray-400 hover:text-[#a83900] transition-colors"
+              onClick={(e) => e.stopPropagation()}
             >
-              {lead.serviceType}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </Link>
+          </div>
+
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="text-[10px] uppercase font-bold tracking-wider"
+                style={{ color: '#9c88bf' }}
+              >
+                {lead.serviceType}
+              </div>
+              {isStale && (
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{ background: '#fef3c7', color: '#92400e' }}
+                  title={`No update for ${age} days`}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  {age}d stale
+                </span>
+              )}
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.2 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.2 }} className="group-hover:opacity-0 transition-opacity">
               <circle cx="9" cy="6" r="1.5" />
               <circle cx="15" cy="6" r="1.5" />
               <circle cx="9" cy="12" r="1.5" />

@@ -25,7 +25,7 @@ const EMPTY_FORM = {
   email: '',
   phone: '',
   company: '',
-  serviceType: 'Tea Ceremony',
+  serviceType: '',
   leadSource: '',
   region: '',
   assignedTo: '',

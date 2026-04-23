@@ -85,13 +85,15 @@ export type Document = {
 }
 
 export const DEFAULT_SERVICE_TYPES: string[] = [
-  'Tea Ceremony',
-  'Traditional Arts',
-  'Onsen Resort',
-  'Animation Tour',
-  'Food Experience',
-  'Cultural Workshop',
-  'Museum',
-  'Tour Operator',
+  'Tours & Day Trips',
+  'Cultural Experience',
+  'Theme Park & Entertainment',
+  'Food & Dining',
+  'Museum & Gallery',
+  'Outdoor & Sports',
+  'Observation & Landmark',
+  'Cruise & Water',
+  'Transport & Pass',
+  'Wellness & Spa',
   'Other',
 ]
