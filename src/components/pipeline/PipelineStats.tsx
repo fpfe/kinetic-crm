@@ -27,24 +27,14 @@ export default function PipelineStats({ leads }: { leads: Lead[] }) {
         label="Win Rate"
         value={winRate}
         color="#a83900"
-        icon={
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-            <polyline points="16 7 22 7 22 13" />
-          </svg>
-        }
+        icon={<span className="material-symbols-outlined" style={{ fontSize: 20 }}>trending_up</span>}
       />
       <div style={{ width: 1, height: 40, background: 'rgba(24,28,35,0.1)' }} />
       <Stat
         label="Velocity"
         value="14d"
         color="#685588"
-        icon={
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 2a10 10 0 1 0 10 10" />
-            <path d="M12 12l5-3" />
-          </svg>
-        }
+        icon={<span className="material-symbols-outlined" style={{ fontSize: 20 }}>speed</span>}
       />
     </div>
   )

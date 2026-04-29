@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Note } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 
 function fmt(d: string): string {
   if (!d) return ''
@@ -14,6 +15,7 @@ function fmt(d: string): string {
 }
 
 export default function InternalNotes({ leadId }: { leadId: string }) {
+  const { toastSuccess, toastError } = useToast()
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
@@ -43,7 +45,7 @@ export default function InternalNotes({ leadId }: { leadId: string }) {
     if (!draft.trim()) return
     setBusy(true)
     try {
-      await fetch('/api/notes', {
+      const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,8 +56,12 @@ export default function InternalNotes({ leadId }: { leadId: string }) {
           createdAt: new Date().toISOString(),
         }),
       })
+      if (!res.ok) throw new Error('Save failed')
       setDraft('')
+      toastSuccess('Note saved')
       load()
+    } catch (err) {
+      toastError((err as Error).message)
     } finally {
       setBusy(false)
     }
@@ -65,7 +71,7 @@ export default function InternalNotes({ leadId }: { leadId: string }) {
     if (!reminderText.trim() || !reminderDate) return
     setBusy(true)
     try {
-      await fetch('/api/notes', {
+      const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -76,18 +82,29 @@ export default function InternalNotes({ leadId }: { leadId: string }) {
           createdAt: new Date().toISOString(),
         }),
       })
+      if (!res.ok) throw new Error('Save failed')
       setReminderText('')
       setReminderDate('')
       setShowReminder(false)
+      toastSuccess('Reminder set')
       load()
+    } catch (err) {
+      toastError((err as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
   async function remove(id: string) {
-    await fetch(`/api/notes/${id}`, { method: 'DELETE' })
-    load()
+    if (!confirm('Delete this note?')) return
+    try {
+      const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      toastSuccess('Note deleted')
+      load()
+    } catch (err) {
+      toastError((err as Error).message)
+    }
   }
 
   return (
@@ -101,7 +118,7 @@ export default function InternalNotes({ leadId }: { leadId: string }) {
       <div className="flex items-center justify-between mb-5">
         <h2
           className="font-display font-bold text-[20px] text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Internal Notes
         </h2>

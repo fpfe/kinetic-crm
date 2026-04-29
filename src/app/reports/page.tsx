@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Lead } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 import ReportFilters, {
   type ReportFilterValue,
 } from '@/components/reports/ReportFilters'
@@ -80,6 +81,7 @@ function exportCSV(leads: Lead[]) {
 }
 
 export default function ReportsPage() {
+  const { toastSuccess } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -173,7 +175,7 @@ export default function ReportsPage() {
         </div>
         <button
           type="button"
-          onClick={() => exportCSV(filtered)}
+          onClick={() => { exportCSV(filtered); toastSuccess('CSV exported') }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-white rounded-none border border-[#a83900]/30 text-[#a83900] text-sm font-semibold hover:bg-[#a83900]/5 transition"
         >
           <span
@@ -194,8 +196,11 @@ export default function ReportsPage() {
       />
 
       {error && (
-        <div className="mb-6 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm">
-          {error}
+        <div className="mb-6 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={refresh} className="ml-4 underline font-semibold hover:text-red-900">
+            Retry
+          </button>
         </div>
       )}
 
@@ -214,6 +219,11 @@ export default function ReportsPage() {
             <div className="h-[360px] rounded-none bg-gray-200 animate-pulse xl:col-span-2" />
             <div className="h-[360px] rounded-none bg-gray-200 animate-pulse" />
           </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center">
+          <div className="text-[15px] font-bold text-[#181c23]">No leads match your filters</div>
+          <div className="text-[13px] text-gray-500 mt-1">Try adjusting the date range, service type, or rep filter.</div>
         </div>
       ) : (
         <div className="flex flex-col gap-8">

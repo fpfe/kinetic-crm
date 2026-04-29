@@ -1,52 +1,107 @@
 @import "tailwindcss";
-@import 'material-symbols/outlined.css';
+@import "material-symbols/outlined.css";
 
-:root {
-  --background: #F5F0E8;
-  --foreground: #181c23;
-  --surface: #ffffff;
-  --surface-low: #f1f3fe;
-  --surface-hover: #ebedf8;
-  --brand: #2D2D2D;
-  --brand-bright: #2D2D2D;
-  --muted: #6b7280;
+@theme {
+  /* ===== Colors ===== */
+  --color-background:   #F5F0E8;
+  --color-sidebar:      #FDFAF5;
+  --color-surface:      #FFFFFF;
+  --color-surface-low:  #F1F3FE;
+  --color-surface-hover:#EBEDF8;
+  --color-surface-lilac:#E5E8F3;
+  --color-nav-active:   #E8E0D0;
+
+  --color-fg:        #181C23;
+  --color-fg-warm:   #5B4137;
+  --color-muted:     #6B7280;
+  --color-muted-2:   #9CA3AF;
+
+  --color-brand:        #A83900;
+  --color-brand-bright: #FF5A00;
+  --color-ink:          #2D2D2D;
+  --color-ink-2:        #4A4A4A;
+  --color-hot:          #E4006D;
+  --color-hot-dark:     #B60056;
+  --color-hot-soft:     #FFD9E0;
+
+  --color-pipe-dust:   #888780;
+  --color-pipe-blue:   #378ADD;
+  --color-pipe-green:  #1D9E75;
+  --color-pipe-amber:  #BA7517;
+  --color-pipe-purple: #685588;
+  --color-pipe-smoke:  #5F5E5A;
+
+  --color-success:    #166534;
+  --color-success-bg: #DCFCE7;
+  --color-warning:    #92400E;
+  --color-warning-bg: #FEF3C7;
+  --color-danger:     #BA1A1A;
+  --color-danger-bg:  #FEE2E2;
+  --color-info:       #1D4ED8;
+  --color-info-bg:    #DBEAFE;
+
+  /* ===== Type ===== */
+  --font-display: "Work Sans", system-ui, sans-serif;
+  --font-sans:    "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+
+  --text-hero:    3rem;       /* 48px */
+  --text-title:   2.5rem;     /* 40px */
+  --text-kpi:     4rem;       /* 64px */
+
+  /* ===== Tracking ===== */
+  --tracking-tight:    -0.02em;
+  --tracking-overline: 0.18em;
+  --tracking-kicker:   0.22em;
+
+  /* ===== Radii — square by default ===== */
+  --radius:       0px;
+  --radius-sm:    0px;
+  --radius-md:    0px;
+  --radius-lg:    0px;
+  --radius-xl:    0px;
+  --radius-2xl:   0px;
+  --radius-3xl:   0px;
+  --radius-4xl:   0px;
+
+  /* ===== Shadows ===== */
+  --shadow-flat:     none;
+  --shadow-dropdown: 0 8px 24px rgba(15,15,30,0.12);
+  --shadow-modal:    0 12px 32px rgba(15,15,30,0.14);
+  --shadow-drag:     0 12px 32px rgba(0,0,0,0.12);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-low: var(--surface-low);
-  --color-surface-hover: var(--surface-hover);
-  --color-brand: var(--brand);
-  --color-brand-bright: var(--brand-bright);
-  --color-muted: var(--muted);
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
-}
-
+/* ===== Base ===== */
 html, body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
+  background: #F5F0E8;
+  color: #181C23;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* ===== Display font helper ===== */
 .font-display {
-  font-family: var(--font-display);
+  font-family: "Work Sans", system-ui, sans-serif;
 }
 
+/* ===== Brand gradients (use sparingly) ===== */
 .brand-gradient {
-  background-image: linear-gradient(135deg, #2D2D2D 0%, #4A4A4A 100%);
+  background: linear-gradient(135deg, #2D2D2D 0%, #4A4A4A 100%);
+  color: #fff;
 }
-
 .brand-gradient-text {
   background-image: linear-gradient(135deg, #2D2D2D 0%, #4A4A4A 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+.rust-gradient {
+  background: linear-gradient(135deg, #A83900 0%, #FF5A00 100%);
+  color: #fff;
+}
 
+/* ===== Material Symbols default ===== */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -60,4 +115,18 @@ html, body {
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Animations ===== */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.4); opacity: 0; }
 }

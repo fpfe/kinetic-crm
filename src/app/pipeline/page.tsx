@@ -31,7 +31,7 @@ export default function PipelinePage() {
           <h1
             className="font-display font-extrabold text-[#181c23] mt-2"
             style={{
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: '"Work Sans", system-ui, sans-serif',
               fontSize: '2.5rem',
               lineHeight: 1.1,
             }}

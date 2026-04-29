@@ -6,7 +6,7 @@ import { calcMetrics } from '@/lib/metrics'
 import KpiCards from '@/components/dashboard/KpiCards'
 import PipelineHealth from '@/components/dashboard/PipelineHealth'
 import RecentActivity from '@/components/dashboard/RecentActivity'
-import OverdueFollowUps from '@/components/dashboard/OverdueFollowUps'
+import FollowUpAlerts from '@/components/dashboard/FollowUpAlerts'
 import DeepSearchActivity from '@/components/dashboard/DeepSearchActivity'
 import LeadSourceBreakdown from '@/components/dashboard/LeadSourceBreakdown'
 import LeadFormModal from '@/components/leads/LeadFormModal'
@@ -386,7 +386,7 @@ export default function DashboardPage() {
           />
 
           <div className="mt-6">
-            <OverdueFollowUps />
+            <FollowUpAlerts />
           </div>
 
           <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-6">

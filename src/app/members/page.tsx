@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Member } from '@/types'
 import MemberFormModal from '@/components/members/MemberFormModal'
+import { useToast } from '@/components/ui/Toast'
 
 const AVATAR_COLORS = [
   '#fde68a',
@@ -25,6 +26,7 @@ function initials(name: string) {
 }
 
 export default function MembersPage() {
+  const { toastSuccess, toastError } = useToast()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -65,9 +67,10 @@ export default function MembersPage() {
     try {
       const res = await fetch(`/api/members/${m.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Delete failed')
+      toastSuccess(`Removed ${m.name}`)
       refresh()
     } catch (err) {
-      alert((err as Error).message)
+      toastError((err as Error).message)
     }
   }
 
@@ -96,14 +99,29 @@ export default function MembersPage() {
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm">
-          {error}
+        <div className="mb-4 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={refresh} className="ml-4 underline font-semibold hover:text-red-900">
+            Retry
+          </button>
         </div>
       )}
 
       {loading ? (
-        <div className="px-5 py-12 text-center text-sm text-gray-500">
-          Loading members…
+        <div className="flex flex-col gap-1">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="grid grid-cols-[1.4fr_1.4fr_1fr_1fr_1fr_60px] items-center px-5 py-3 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-gray-200 rounded-none" />
+                <div className="h-4 bg-gray-200 rounded w-28" />
+              </div>
+              <div className="h-3 bg-gray-200 rounded w-36" />
+              <div className="h-3 bg-gray-200 rounded w-24" />
+              <div className="h-3 bg-gray-200 rounded w-20" />
+              <div className="h-3 bg-gray-200 rounded w-16" />
+              <div />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="rounded-none overflow-visible">
@@ -196,7 +214,10 @@ export default function MembersPage() {
         mode={formMode}
         initial={editing}
         onClose={() => setFormOpen(false)}
-        onCreated={() => refresh()}
+        onCreated={() => {
+          toastSuccess(formMode === 'create' ? 'Member registered' : 'Member updated')
+          refresh()
+        }}
       />
     </div>
   )

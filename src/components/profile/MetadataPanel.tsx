@@ -29,7 +29,7 @@ export default function MetadataPanel({ lead, onEdit }: { lead: Lead; onEdit?: (
       <div className="flex items-center justify-between mb-8">
         <h2
           className="font-display font-extrabold text-[14px] uppercase tracking-tight text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Metadata
         </h2>

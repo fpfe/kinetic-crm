@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Document } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 
 const FILE_TYPES = ['pdf', 'docx', 'xlsx', 'other'] as const
 
@@ -31,6 +32,7 @@ function timeAgo(s: string): string {
 }
 
 export default function DocumentStorage({ leadId }: { leadId: string }) {
+  const { toastSuccess, toastError } = useToast()
   const [items, setItems] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -53,8 +55,14 @@ export default function DocumentStorage({ leadId }: { leadId: string }) {
 
   async function remove(id: string) {
     if (!confirm('Delete this document?')) return
-    await fetch(`/api/documents/${id}`, { method: 'DELETE' })
-    load()
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      toastSuccess('Document deleted')
+      load()
+    } catch (err) {
+      toastError((err as Error).message)
+    }
   }
 
   return (
@@ -68,7 +76,7 @@ export default function DocumentStorage({ leadId }: { leadId: string }) {
       <div className="flex items-center justify-between mb-6">
         <h2
           className="font-display font-bold text-[24px] text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Document Storage
         </h2>
@@ -150,6 +158,7 @@ export default function DocumentStorage({ leadId }: { leadId: string }) {
           onClose={() => setAdding(false)}
           onSaved={() => {
             setAdding(false)
+            toastSuccess('Document added')
             load()
           }}
         />
@@ -171,6 +180,7 @@ function AddDocModal({
   const [fileType, setFileType] = useState<(typeof FILE_TYPES)[number]>('pdf')
   const [fileSize, setFileSize] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -192,7 +202,7 @@ function AddDocModal({
       if (!res.ok) throw new Error('save failed')
       onSaved()
     } catch (err) {
-      alert((err as Error).message)
+      setError((err as Error).message)
     } finally {
       setBusy(false)
     }
@@ -212,7 +222,7 @@ function AddDocModal({
       >
         <h3
           className="font-display font-bold text-[20px] mb-2 text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Add Document
         </h3>
@@ -260,6 +270,11 @@ function AddDocModal({
             />
           </label>
         </div>
+        {error && (
+          <div className="text-[12px] text-red-600 bg-red-50 p-2 rounded-none mt-3">
+            {error}
+          </div>
+        )}
         <div className="flex justify-end gap-2 mt-6">
           <button
             type="button"

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useToast } from '@/components/ui/Toast'
 import {
   LEAD_STATUSES,
   DEFAULT_SERVICE_TYPES,
@@ -54,6 +55,7 @@ export default function LeadFormModal({
   onClose,
   onSaved,
 }: Props) {
+  const { toastError } = useToast()
   const [form, setForm] = useState(EMPTY_FORM)
   const [serviceTypes, setServiceTypes] = useState<string[]>(DEFAULT_SERVICE_TYPES)
   const [members, setMembers] = useState<Member[]>([])
@@ -129,7 +131,7 @@ export default function LeadFormModal({
       if (Array.isArray(refreshed)) setServiceTypes(refreshed)
       update('serviceType', name)
     } catch (err) {
-      alert((err as Error).message)
+      toastError((err as Error).message)
     }
   }
 

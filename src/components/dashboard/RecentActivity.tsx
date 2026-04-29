@@ -67,17 +67,17 @@ export default function RecentActivity({ leads }: Props) {
     .slice(0, 5)
 
   return (
-    <div className="bg-[#e5e8f3] rounded-none p-8 xl:col-span-1">
+    <div className="bg-surface-lilac rounded-none p-8 xl:col-span-1">
       <div className="flex items-center justify-between mb-6">
         <h2
-          className="font-display font-bold text-[#181c23]"
+          className="font-display font-bold text-fg"
           style={{ fontSize: 20 }}
         >
           Recent Activity
         </h2>
         <Link
           href="/leads"
-          className="text-[12px] font-bold text-[#a83900] hover:opacity-80"
+          className="text-[12px] font-bold text-brand hover:opacity-80"
         >
           View All
         </Link>
@@ -114,7 +114,7 @@ export default function RecentActivity({ leads }: Props) {
 
       {/* Today's Actions */}
       <div className="mt-8 bg-white rounded-none p-6">
-        <div className="text-[11px] font-bold uppercase text-[#a83900] tracking-wider mb-4">
+        <div className="text-[11px] font-bold uppercase text-brand mb-4" style={{ letterSpacing: '0.18em' }}>
           Today&apos;s Actions
         </div>
         {(() => {

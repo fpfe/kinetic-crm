@@ -17,15 +17,14 @@ type Props = {
 const STAGES: {
   label: string
   key: keyof StageCounts
-  fill: string
-  inner?: boolean
+  bg: string
 }[] = [
-  { label: 'Prospecting', key: 'New', fill: 'bg-[#a83900]/15' },
-  { label: 'Contacted', key: 'Contacted', fill: 'bg-[#a83900]/25' },
-  { label: 'Qualification', key: 'Qualified', fill: 'bg-[#a83900]/35' },
-  { label: 'Proposal', key: 'Proposal Sent', fill: 'bg-[#a83900]/50' },
-  { label: 'Negotiation', key: 'Negotiation', fill: 'bg-[#a83900]/65' },
-  { label: 'Closed Won', key: 'Closed Won', fill: 'bg-[#a83900]', inner: true },
+  { label: 'Prospecting', key: 'New', bg: '#888780' },
+  { label: 'Contacted', key: 'Contacted', bg: '#378ADD' },
+  { label: 'Qualification', key: 'Qualified', bg: '#1D9E75' },
+  { label: 'Proposal', key: 'Proposal Sent', bg: '#BA7517' },
+  { label: 'Negotiation', key: 'Negotiation', bg: '#685588' },
+  { label: 'Closed Won', key: 'Closed Won', bg: '#A83900' },
 ]
 
 export default function PipelineHealth({ stageCounts }: Props) {
@@ -38,53 +37,40 @@ export default function PipelineHealth({ stageCounts }: Props) {
     stageCounts.Negotiation
 
   return (
-    <div className="bg-[#f1f3fe] rounded-none p-8 xl:col-span-2">
+    <div className="bg-surface-low rounded-none p-8 xl:col-span-2">
       <div className="flex items-center justify-between mb-8">
         <h2
-          className="font-display font-bold text-[#181c23]"
+          className="font-display font-bold text-fg"
           style={{ fontSize: 22 }}
         >
           Pipeline Health
         </h2>
-        <span className="px-4 py-1.5 rounded-none bg-white text-[#a83900] text-[12px] font-bold tracking-wider">
+        <span className="px-4 py-1.5 rounded-none bg-white text-brand text-[12px] font-bold" style={{ letterSpacing: '0.18em' }}>
           Active: {active} Deals
         </span>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-5">
         {STAGES.map((s) => {
           const count = stageCounts[s.key]
           const pct = Math.round((count / max) * 100)
           return (
-            <div key={s.key}>
-              <div className="flex items-center mb-2">
-                <span className="text-[12px] font-bold text-gray-600 uppercase tracking-wider">
-                  {s.label}
-                </span>
-              </div>
+            <div key={s.key} className="grid items-center gap-3" style={{ gridTemplateColumns: '140px 1fr 60px' }}>
+              <span className="text-[12px] font-bold text-[#5b4137]/60 uppercase" style={{ letterSpacing: '0.18em' }}>
+                {s.label}
+              </span>
               <div
                 className="bg-[#dfe2ed] rounded-none overflow-hidden"
-                style={{ height: 32 }}
+                style={{ height: 8 }}
               >
                 <div
-                  className={`${s.fill} h-full rounded-none transition-all flex items-center`}
-                  style={{ width: `${Math.max(pct, 4)}%` }}
-                >
-                  {count > 0 && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: 'white',
-                        paddingLeft: 12,
-                        opacity: 0.9,
-                      }}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </div>
+                  className="h-full rounded-none transition-all"
+                  style={{ width: `${Math.max(pct, 4)}%`, background: s.bg }}
+                />
               </div>
+              <span className="text-[13px] font-bold text-[#181c23] text-right font-mono">
+                {count}
+              </span>
             </div>
           )
         })}

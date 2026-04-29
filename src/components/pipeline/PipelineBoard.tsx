@@ -128,8 +128,26 @@ export default function PipelineBoard({
   return (
     <>
       {error && (
-        <div className="mb-4 text-[12px] text-red-600 bg-red-50 px-3 py-2 rounded-none">
-          {error}
+        <div className="mb-4 text-[12px] text-red-600 bg-red-50 px-3 py-2 rounded-none flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+              setLoading(true)
+              fetch('/api/leads')
+                .then((r) => r.json())
+                .then((data: unknown) => {
+                  const safe: Lead[] = Array.isArray(data) ? (data as Lead[]) : []
+                  updateLeads(safe)
+                })
+                .catch((e) => setError((e as Error).message))
+                .finally(() => setLoading(false))
+            }}
+            className="ml-4 underline font-semibold hover:text-red-900"
+          >
+            Retry
+          </button>
         </div>
       )}
       <DragDropContext onDragEnd={onDragEnd}>

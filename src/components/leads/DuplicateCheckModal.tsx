@@ -241,7 +241,7 @@ export default function DuplicateCheckModal({ open, leads, onClose, onMerged }: 
               </div>
               <h2
                 className="font-extrabold text-2xl text-[#181c23] mt-1"
-                style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+                style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
               >
                 Duplicate Check
               </h2>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Interaction, InteractionType, Lead } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 
 const TYPE_META: Record<
   InteractionType,
@@ -79,6 +80,7 @@ function fmtDate(s: string): string {
 const todayISO = () => new Date().toISOString().slice(0, 10)
 
 export default function InteractionLog({ leadId, lead }: { leadId: string; lead?: Lead }) {
+  const { toastSuccess, toastError } = useToast()
   const [items, setItems] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
   const [formMode, setFormMode] = useState<'add' | 'edit' | null>(null)
@@ -134,8 +136,9 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
       const res = await fetch(`/api/interactions/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Delete failed')
       setItems((prev) => prev.filter((i) => i.id !== id))
+      toastSuccess('Interaction deleted')
     } catch (err) {
-      alert((err as Error).message)
+      toastError((err as Error).message)
     } finally {
       setDeletingId(null)
     }
@@ -161,7 +164,7 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
       <div className="flex items-center justify-between mb-4">
         <h2
           className="font-display font-bold text-[24px] text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Interaction Log
         </h2>
@@ -369,6 +372,7 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
           onSaved={() => {
             setFormMode(null)
             setEditTarget(null)
+            toastSuccess(formMode === 'edit' ? 'Interaction updated' : 'Interaction added')
             load()
           }}
         />
@@ -378,7 +382,7 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
         <ColdEmailModal
           lead={lead}
           onClose={() => setEmailOpen(false)}
-          onSaveAsInteraction={(subject, body) => {
+          onSaveAsInteraction={(subject, emailBody) => {
             setEmailOpen(false)
             // Auto-create an email interaction with the generated content
             fetch('/api/interactions', {
@@ -388,12 +392,18 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
                 leadId,
                 type: 'email',
                 title: subject,
-                body,
+                body: emailBody,
                 tags: '#ColdEmail',
                 date: todayISO(),
                 createdBy: 'You',
               }),
-            }).then(() => load())
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error('Save failed')
+                toastSuccess('Cold email saved to interactions')
+                load()
+              })
+              .catch((err) => toastError((err as Error).message))
           }}
         />
       )}
@@ -513,7 +523,7 @@ function FormModal({
       >
         <h3
           className="font-display font-bold text-[20px] mb-5 text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           {mode === 'edit' ? 'Edit Interaction' : 'New Interaction'}
         </h3>
@@ -691,7 +701,7 @@ function ColdEmailModal({
       >
         <h3
           className="font-display font-bold text-[20px] mb-1 text-[#181c23]"
-          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+          style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
         >
           Generate Cold Email
         </h3>

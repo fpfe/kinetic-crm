@@ -11,8 +11,10 @@ import LeadFilters, {
 import LeadFormModal from '@/components/leads/LeadFormModal'
 import ViewLeadModal from '@/components/leads/ViewLeadModal'
 import DuplicateCheckModal from '@/components/leads/DuplicateCheckModal'
+import { useToast } from '@/components/ui/Toast'
 
 export default function LeadsPage() {
+  const { toastSuccess, toastError } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
   const [serviceTypes, setServiceTypes] = useState<string[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -135,12 +137,14 @@ export default function LeadsPage() {
 
   // ─────────── lead mutations ───────────
   const handleDelete = async (lead: Lead) => {
+    if (!confirm(`Delete "${lead.company}"? This cannot be undone.`)) return
     try {
       const res = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Delete failed')
+      toastSuccess(`Deleted "${lead.company}"`)
       refresh()
     } catch (err) {
-      alert((err as Error).message)
+      toastError((err as Error).message)
     }
   }
 
@@ -158,44 +162,54 @@ export default function LeadsPage() {
         prev.map((l) => (l.id === lead.id ? { ...l, status } : l))
       )
     } catch (err) {
-      alert((err as Error).message)
+      toastError((err as Error).message)
     }
   }
 
   // ─────────── bulk actions ───────────
-  async function bulkPatch(patch: Partial<Lead>) {
+  async function bulkPatch(patch: Partial<Lead>, label: string) {
     const ids = [...selectedIds]
     if (!ids.length) return
-    await Promise.all(
-      ids.map((id) =>
-        fetch(`/api/leads/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
-        })
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/leads/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+          })
+        )
       )
-    )
-    setRowSelection({})
-    refresh()
+      toastSuccess(`Updated ${ids.length} lead(s): ${label}`)
+      setRowSelection({})
+      refresh()
+    } catch (err) {
+      toastError(`Bulk update failed: ${(err as Error).message}`)
+    }
   }
 
   const handleBulkDelete = async () => {
     const ids = [...selectedIds]
     if (!ids.length) return
-    if (!confirm(`Delete ${ids.length} lead(s)?`)) return
-    await Promise.all(
-      ids.map((id) => fetch(`/api/leads/${id}`, { method: 'DELETE' }))
-    )
-    setRowSelection({})
-    refresh()
+    if (!confirm(`Delete ${ids.length} lead(s)? This cannot be undone.`)) return
+    try {
+      await Promise.all(
+        ids.map((id) => fetch(`/api/leads/${id}`, { method: 'DELETE' }))
+      )
+      toastSuccess(`Deleted ${ids.length} lead(s)`)
+      setRowSelection({})
+      refresh()
+    } catch (err) {
+      toastError(`Bulk delete failed: ${(err as Error).message}`)
+    }
   }
 
   const handleBulkAssign = async (memberName: string) => {
-    bulkPatch({ assignedTo: memberName })
+    bulkPatch({ assignedTo: memberName }, `assigned to ${memberName}`)
   }
 
   const handleBulkUpdateStatus = async (status: LeadStatus) => {
-    bulkPatch({ status })
+    bulkPatch({ status }, `status → ${status}`)
   }
 
   // ─────────── modal openers ───────────
@@ -267,14 +281,26 @@ export default function LeadsPage() {
       />
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm">
-          {error}
+        <div className="mb-4 px-4 py-3 rounded-none bg-red-50 text-red-700 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={refresh} className="ml-4 underline font-semibold hover:text-red-900">
+            Retry
+          </button>
         </div>
       )}
 
       {loading ? (
-        <div className="px-5 py-12 text-center text-sm text-gray-500">
-          Loading leads…
+        <div className="bg-white rounded-none border border-gray-200">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-gray-100 animate-pulse">
+              <div className="h-4 w-4 bg-gray-200 rounded" />
+              <div className="h-4 bg-gray-200 rounded w-40" />
+              <div className="h-4 bg-gray-200 rounded w-28" />
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="flex-1" />
+              <div className="h-4 bg-gray-200 rounded w-16" />
+            </div>
+          ))}
         </div>
       ) : (
         <LeadTable
@@ -293,7 +319,10 @@ export default function LeadsPage() {
         mode={formMode}
         initial={editingLead}
         onClose={() => setFormOpen(false)}
-        onSaved={() => refresh()}
+        onSaved={() => {
+          toastSuccess(formMode === 'create' ? 'Lead created' : 'Lead updated')
+          refresh()
+        }}
       />
 
       <ViewLeadModal

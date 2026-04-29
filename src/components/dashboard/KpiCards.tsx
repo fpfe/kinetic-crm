@@ -15,14 +15,15 @@ function TrendBadge({
   tone: 'green' | 'gray' | 'red' | 'amber'
 }) {
   const styles: Record<string, string> = {
-    green: 'bg-green-100 text-green-700',
+    green: 'bg-success-bg text-success',
     gray: 'bg-gray-100 text-gray-600',
-    red: 'bg-red-100 text-red-700',
-    amber: 'bg-amber-100 text-amber-700',
+    red: 'bg-danger-bg text-danger',
+    amber: 'bg-warning-bg text-warning',
   }
   return (
     <span
-      className={`px-3 py-1 rounded-none text-[11px] font-bold tracking-wider ${styles[tone]}`}
+      className={`px-2.5 py-1 rounded-none text-[11px] font-bold ${styles[tone]}`}
+      style={{ letterSpacing: '0.06em' }}
     >
       {label}
     </span>
@@ -69,7 +70,7 @@ export default function KpiCards({
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1 }}
+            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {totalLeads}
           </span>
@@ -104,7 +105,7 @@ export default function KpiCards({
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1 }}
+            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {leadsThisWeek}
           </span>
@@ -135,7 +136,7 @@ export default function KpiCards({
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1 }}
+            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {deepSearchesThisWeek}
           </span>

@@ -32,19 +32,18 @@ export default function PipelineColumn({ column, leads, onAddLead }: Props) {
       <div className="flex items-center justify-between px-1 mb-3">
         <div className="flex items-center gap-2">
           <span
-            className="text-[11px] uppercase font-bold tracking-wider"
-            style={{ color: 'rgba(24,28,35,0.4)' }}
+            className="text-[11px] uppercase font-bold text-fg/40"
+            style={{ letterSpacing: '0.18em' }}
           >
             {column.label}
           </span>
           <span
-            className="rounded-none px-2 py-0.5 text-[10px] font-bold text-gray-500"
-            style={{ background: '#e5e8f3' }}
+            className="rounded-none px-2 py-0.5 text-[10px] font-bold text-muted bg-surface-lilac"
           >
             {pad2(leads.length)}
           </span>
         </div>
-        <span className="text-[11px] font-bold" style={{ color: '#a83900' }}>
+        <span className="text-[11px] font-bold text-brand">
           {formatYen(totalValue)}
         </span>
       </div>

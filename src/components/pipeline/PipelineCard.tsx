@@ -45,42 +45,31 @@ const STALE_DAYS = 7
 function FooterActivity({ lead }: { lead: Lead }) {
   if (lead.status === 'Negotiation') {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#b60056' }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <line x1="12" y1="4" x2="12" y2="14" />
-          <circle cx="12" cy="19" r="1.2" fill="currentColor" />
-        </svg>
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-hot-dark">
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>priority_high</span>
         Decision Pending
       </span>
     )
   }
   if (lead.status === 'Closed Won') {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-green-600">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success">
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check_circle</span>
         Closed Won
       </span>
     )
   }
   if (lead.status === 'Closed Lost') {
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <line x1="6" y1="6" x2="18" y2="18" />
-          <line x1="18" y1="6" x2="6" y2="18" />
-        </svg>
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted">
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>cancel</span>
         Closed Lost
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted">
+      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
       {daysSince(lead.createdAt)}d
     </span>
   )
@@ -134,7 +123,7 @@ export default function PipelineCard({ lead, index }: Props) {
               <button
                 type="button"
                 title="Send email"
-                className="p-1.5 text-gray-400 hover:text-[#a83900] transition-colors"
+                className="p-1.5 text-gray-400 hover:text-brand transition-colors"
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
@@ -145,30 +134,24 @@ export default function PipelineCard({ lead, index }: Props) {
                   )
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                </svg>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>mail</span>
               </button>
             )}
             <Link
               href={`/leads/${lead.id}`}
               title="View details"
-              className="p-1.5 text-gray-400 hover:text-[#a83900] transition-colors"
+              className="p-1.5 text-gray-400 hover:text-brand transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>visibility</span>
             </Link>
           </div>
 
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               <div
-                className="text-[10px] uppercase font-bold tracking-wider"
-                style={{ color: '#9c88bf' }}
+                className="text-[10px] uppercase font-bold text-pipe-purple"
+                style={{ letterSpacing: '0.18em' }}
               >
                 {lead.serviceType}
               </div>
@@ -187,20 +170,13 @@ export default function PipelineCard({ lead, index }: Props) {
                 </span>
               )}
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.2 }} className="group-hover:opacity-0 transition-opacity">
-              <circle cx="9" cy="6" r="1.5" />
-              <circle cx="15" cy="6" r="1.5" />
-              <circle cx="9" cy="12" r="1.5" />
-              <circle cx="15" cy="12" r="1.5" />
-              <circle cx="9" cy="18" r="1.5" />
-              <circle cx="15" cy="18" r="1.5" />
-            </svg>
+            <span className="material-symbols-outlined group-hover:opacity-0 transition-opacity" style={{ fontSize: 16, opacity: 0.2 }}>drag_indicator</span>
           </div>
 
           {isHot && (
             <span
-              className="inline-block mb-2 px-2 py-0.5 rounded-none text-[9px] font-bold uppercase tracking-wider"
-              style={{ background: '#ffd9e0', color: '#b60056' }}
+              className="inline-block mb-2 px-2 py-0.5 rounded-none text-[9px] font-bold uppercase bg-hot-soft text-hot-dark"
+              style={{ letterSpacing: '0.18em' }}
             >
               Hot Priority
             </span>
