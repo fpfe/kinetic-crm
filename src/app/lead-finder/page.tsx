@@ -15,6 +15,8 @@ type FinderLead = {
   website: string | null
   city: City
   category: string
+  service_type: string | null
+  market_demand_tier: number | null
   description: string
   experience_types: string[]
   inbound_strategy: string | null
@@ -24,6 +26,7 @@ type FinderLead = {
   klook_gap: string
   priority_tourists: Tourist[]
   priority_score: number
+  score_rationale: string | null
   contact_person: string | null
   contact_email: string | null
   contact_phone: string | null
@@ -34,22 +37,41 @@ type FinderLead = {
 type ToastMsg = { id: number; text: string }
 
 const LS_LEADS = 'headout_leads'
-const LS_KEY = 'headout_api_key'
 const LS_CRM_ADDED = 'headout_crm_added'
 
 const CITIES: City[] = ['Tokyo', 'Osaka', 'Kyoto']
+const SERVICE_TYPES = [
+  'Tours & Day Trips',
+  'Cultural Experience',
+  'Theme Park & Entertainment',
+  'Food & Dining',
+  'Museum & Gallery',
+  'Outdoor & Sports',
+  'Observation & Landmark',
+  'Cruise & Water',
+  'Transport & Pass',
+  'Wellness & Spa',
+] as const
+
 const QUICK_TAGS = [
   'Food & Dining',
-  'Cultural Tours',
-  'Outdoor Activities',
-  'Entertainment',
-  'Day Trips',
-  'Unique Experiences',
-  'Art & Crafts',
-  'Sake & Beer',
+  'Cultural Experience',
+  'Outdoor & Sports',
+  'Tours & Day Trips',
+  'Wellness & Spa',
+  'Museum & Gallery',
+  'Theme Park & Entertainment',
+  'Observation & Landmark',
+  'Cruise & Water',
   'Tea Ceremony',
-  'Traditional Arts',
 ]
+
+const TIER_LABELS: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: 'Tier 1 · High Demand', color: 'text-green-700', bg: 'bg-green-50' },
+  2: { label: 'Tier 2 · Strong Demand', color: 'text-blue-700', bg: 'bg-blue-50' },
+  3: { label: 'Tier 3 · Moderate Demand', color: 'text-amber-700', bg: 'bg-amber-50' },
+  4: { label: 'Tier 4 · Baseline', color: 'text-gray-600', bg: 'bg-gray-100' },
+}
 
 const LOADING_MESSAGES = [
   'Searching the web...',
@@ -87,8 +109,8 @@ function normalizeUrl(u: string | null | undefined): string {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 8) return 'bg-green-500'
-  if (score >= 5) return 'bg-amber-500'
+  if (score >= 70) return 'bg-green-500'
+  if (score >= 40) return 'bg-amber-500'
   return 'bg-red-500'
 }
 
@@ -112,7 +134,6 @@ export default function LeadFinderPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [emailLeadId, setEmailLeadId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsNote, setSettingsNote] = useState<string | null>(null)
   const [toasts, setToasts] = useState<ToastMsg[]>([])
   const errTimer = useRef<number | null>(null)
 
@@ -120,10 +141,6 @@ export default function LeadFinderPage() {
   useEffect(() => {
     setLeads(loadLeads())
     setCrmAdded(loadCrmAdded())
-    if (!window.localStorage.getItem(LS_KEY)) {
-      setSettingsNote('Please add your Anthropic API key to start')
-      setSettingsOpen(true)
-    }
   }, [])
 
   // Persist leads
@@ -159,12 +176,6 @@ export default function LeadFinderPage() {
       showError('Enter a category or keywords first.')
       return
     }
-    const apiKey = window.localStorage.getItem(LS_KEY) ?? ''
-    if (!apiKey) {
-      setSettingsNote('Please add your Anthropic API key to start')
-      setSettingsOpen(true)
-      return
-    }
 
     setLoading(true)
     setLoadingMsg(LOADING_MESSAGES[0])
@@ -177,84 +188,29 @@ export default function LeadFinderPage() {
     const existingNames =
       leads.map((l) => l.name).join(', ') || '(none)'
 
-    const systemPrompt = `You are a business development researcher for Headout, an experience OTA whose primary inbound tourist segments are European, American, and Middle Eastern travelers to Japan.
-
-Search the web and find REAL, EXISTING experience operators in ${city}, Japan matching: ${kw}.
-
-Rules:
-- Only return companies verified via web search. Do NOT hallucinate.
-- Return null for any contact details not findable - do not guess.
-- Return 5-8 companies.
-- Return ONLY a raw JSON array. No markdown, no backticks. Start with [ end with ].
-
-Schema per company:
-{
-  "id": "unique-slug",
-  "name": "English company name",
-  "name_jp": "Japanese name",
-  "website": "https://...",
-  "city": "${city}",
-  "category": "${kw}",
-  "description": "2-3 factual sentences",
-  "experience_types": ["..."],
-  "inbound_strategy": "string or null",
-  "recent_news": "string or null",
-  "klook_listed": true,
-  "klook_url": "string or null",
-  "klook_gap": "string",
-  "priority_tourists": ["Europe","US","Middle East"],
-  "priority_score": 8,
-  "contact_person": "string or null",
-  "contact_email": "string or null",
-  "contact_phone": "string or null",
-  "address": "string"
-}
-
-Skip companies already in this list (case-insensitive name match): ${existingNames}`
-
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/lead-finder/search', {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 8000,
-          system: systemPrompt,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [
-            {
-              role: 'user',
-              content: `Find ${kw} operators in ${city}.`,
-            },
-          ],
-        }),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ keywords: kw, city, existingNames }),
       })
 
       window.clearInterval(interval)
 
       if (!res.ok) {
-        const t = await res.text()
-        throw new Error(`API error ${res.status}: ${t.slice(0, 240)}`)
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(body.error || `API error ${res.status}`)
       }
-      const data = (await res.json()) as {
-        content?: Array<{ type: string; text?: string }>
-      }
-      const text = (data.content ?? [])
-        .filter((b) => b.type === 'text')
-        .map((b) => b.text ?? '')
-        .join('\n')
+      const data = (await res.json()) as { text: string }
+      let text = data.text.trim()
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
 
       let arr: FinderLead[]
       try {
         const m = text.match(/\[[\s\S]*\]/)
         arr = JSON.parse(m ? m[0] : text) as FinderLead[]
       } catch {
-        throw new Error('Could not parse results - please try again')
+        throw new Error('Could not parse results — please try again')
       }
       if (!Array.isArray(arr) || arr.length === 0) {
         setLoading(false)
@@ -308,11 +264,7 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
       window.clearInterval(interval)
       setLoading(false)
       const e = err as Error
-      let msg = e.message || String(err)
-      if (/tool/i.test(msg)) {
-        msg +=
-          ' — Web search may not be enabled on your API key. Check your Anthropic console.'
-      }
+      const msg = e.message || String(err)
       showError(msg)
     }
   }, [keywords, city, leads, persistLeads, pushToast, showError])
@@ -344,7 +296,7 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
           email: lead.contact_email ?? '',
           phone: lead.contact_phone ?? '',
           company: lead.name,
-          serviceType: lead.category,
+          serviceType: lead.service_type || lead.category,
           leadSource: 'Lead Finder',
           assignedTo: 'Seungjun Ahn',
           status: 'New',
@@ -388,7 +340,7 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
       total,
       klook,
       noKlook: total - klook,
-      high: cityLeads.filter((l) => l.priority_score >= 8).length,
+      high: cityLeads.filter((l) => l.priority_score >= 70).length,
     }
   }, [cityLeads])
 
@@ -485,17 +437,14 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
                 <span className="font-semibold">{stats.noKlook}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">High priority (8-10)</span>
+                <span className="text-gray-500">High priority (70+)</span>
                 <span className="font-semibold">{stats.high}</span>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => {
-              setSettingsNote(null)
-              setSettingsOpen(true)
-            }}
+            onClick={() => setSettingsOpen(true)}
             className="mt-4 w-full py-2 text-xs text-gray-500 border border-gray-200 rounded-none hover:text-[#a83900] hover:border-[#a83900] transition-colors"
           >
             ⚙ Settings
@@ -538,23 +487,12 @@ Skip companies already in this list (case-insensitive name match): ${existingNam
           lead={emailLead}
           onClose={() => setEmailLeadId(null)}
           onToast={pushToast}
-          onMissingKey={() => {
-            setEmailLeadId(null)
-            setSettingsNote('Please add your Anthropic API key to start')
-            setSettingsOpen(true)
-          }}
         />
       )}
       {settingsOpen && (
         <SettingsModal
-          note={settingsNote}
           leadCount={leads.length}
           onClose={() => setSettingsOpen(false)}
-          onSave={(k) => {
-            window.localStorage.setItem(LS_KEY, k)
-            pushToast('Settings saved')
-            setSettingsOpen(false)
-          }}
           onClearAll={() => {
             if (window.confirm('Delete ALL leads? This cannot be undone.')) {
               persistLeads([])
@@ -676,8 +614,13 @@ function LeadCard({
       </div>
       <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
         <span className="px-2 py-0.5 text-[11px] rounded-none bg-gray-100 text-gray-600">
-          {lead.category || 'Uncategorized'}
+          {lead.service_type || lead.category || 'Uncategorized'}
         </span>
+        {lead.market_demand_tier && TIER_LABELS[lead.market_demand_tier] && (
+          <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-none ${TIER_LABELS[lead.market_demand_tier].bg} ${TIER_LABELS[lead.market_demand_tier].color}`}>
+            {TIER_LABELS[lead.market_demand_tier].label}
+          </span>
+        )}
         {(lead.priority_tourists || []).map((t) => (
           <span
             key={t}
@@ -735,6 +678,8 @@ type DeepBrief = {
     listed_on_otas: string[]
     recent_news: string | null
   }
+  service_type?: string
+  market_demand_tier?: number
   score: number
   score_rationale: string
   next_action: string
@@ -798,6 +743,9 @@ function DetailView({
     const parts: string[] = []
     // Lead Finder data
     parts.push(lead.description)
+    if (lead.service_type) parts.push(`Service type: ${lead.service_type}`)
+    if (lead.market_demand_tier) parts.push(`Market demand: Tier ${lead.market_demand_tier} (DBJ-JTBF 2025)`)
+    if (lead.score_rationale) parts.push(`Score: ${lead.priority_score}/100 — ${lead.score_rationale}`)
     if (lead.inbound_strategy) parts.push(`Inbound: ${lead.inbound_strategy}`)
     if (lead.klook_gap) parts.push(`Klook gap: ${lead.klook_gap}`)
     // Deep Search data
@@ -832,8 +780,13 @@ function DetailView({
         )}
         <div className="flex flex-wrap items-center gap-1.5 mt-3">
           <span className="px-2 py-0.5 text-[11px] rounded-none bg-gray-100 text-gray-600">
-            {lead.category}
+            {lead.service_type || lead.category}
           </span>
+          {lead.market_demand_tier && TIER_LABELS[lead.market_demand_tier] && (
+            <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-none ${TIER_LABELS[lead.market_demand_tier].bg} ${TIER_LABELS[lead.market_demand_tier].color}`}>
+              {TIER_LABELS[lead.market_demand_tier].label}
+            </span>
+          )}
           {(lead.priority_tourists || []).map((t) => (
             <span
               key={t}
@@ -850,13 +803,16 @@ function DetailView({
             </span>
           )}
           <span
-            className={`w-7 h-7 rounded-none flex items-center justify-center text-white font-bold text-xs ${scoreColor(
+            className={`px-2.5 h-7 min-w-[2rem] rounded-none flex items-center justify-center text-white font-bold text-xs ${scoreColor(
               lead.priority_score || 0
             )}`}
           >
             {lead.priority_score || 0}
           </span>
         </div>
+        {lead.score_rationale && (
+          <p className="text-xs text-gray-500 mt-2">{lead.score_rationale}</p>
+        )}
 
         <DetailSection title="Website">
           {lead.website ? (
@@ -953,13 +909,25 @@ function DetailView({
               <p className="text-[10px] tracking-[0.18em] font-semibold text-[#a83900]">
                 DEEP RESEARCH RESULTS
               </p>
-              <span
-                className={`px-2.5 h-7 min-w-[2rem] rounded-none flex items-center justify-center text-white font-bold text-xs ${
-                  deepBrief.score >= 70 ? 'bg-green-500' : deepBrief.score >= 40 ? 'bg-amber-500' : 'bg-red-500'
-                }`}
-              >
-                {deepBrief.score}
-              </span>
+              <div className="flex items-center gap-2">
+                {deepBrief.service_type && (
+                  <span className="px-2 py-0.5 text-[11px] rounded-none bg-gray-100 text-gray-600">
+                    {deepBrief.service_type}
+                  </span>
+                )}
+                {deepBrief.market_demand_tier && TIER_LABELS[deepBrief.market_demand_tier] && (
+                  <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-none ${TIER_LABELS[deepBrief.market_demand_tier].bg} ${TIER_LABELS[deepBrief.market_demand_tier].color}`}>
+                    {TIER_LABELS[deepBrief.market_demand_tier].label}
+                  </span>
+                )}
+                <span
+                  className={`px-2.5 h-7 min-w-[2rem] rounded-none flex items-center justify-center text-white font-bold text-xs ${
+                    deepBrief.score >= 70 ? 'bg-green-500' : deepBrief.score >= 40 ? 'bg-amber-500' : 'bg-red-500'
+                  }`}
+                >
+                  {deepBrief.score}
+                </span>
+              </div>
             </div>
             <p className="text-xs text-gray-500 mb-4">{deepBrief.score_rationale}</p>
 
@@ -1115,12 +1083,10 @@ function EmailModal({
   lead,
   onClose,
   onToast,
-  onMissingKey,
 }: {
   lead: FinderLead
   onClose: () => void
   onToast: (msg: string) => void
-  onMissingKey: () => void
 }) {
   const [u1, setU1] = useState('')
   const [u2, setU2] = useState('')
@@ -1131,52 +1097,29 @@ function EmailModal({
   const [err, setErr] = useState<string | null>(null)
 
   const generate = async () => {
-    const apiKey = window.localStorage.getItem(LS_KEY) ?? ''
-    if (!apiKey) {
-      onMissingKey()
-      return
-    }
     setGenerating(true)
     setErr(null)
     setOutput(null)
-    const sys = `You are writing a formal Japanese cold outreach email (keigo, first-contact appropriate) for Seungjun Ahn, Head of BD Japan at Headout.
-Headout is a global experience OTA connecting operators with European, American, and Middle Eastern tourists at zero upfront cost.
-Target: ${lead.name}, ${lead.city}. About them: ${lead.description ?? ''}.
-Why this company: ${u1}. Why Headout helps: ${u2}. Meeting dates: ${u3}. Other: ${u4}.
-Requirements:
-- Write entirely in Japanese (keigo/formal register).
-- Start with "件名:" line (subject line in Japanese).
-- Structure the body in this order: 自己紹介 / 連絡理由 / 提案要旨 / 日程候補 / 次のステップ.
-- Keep the body under 200 words in Japanese.
-- End with the sign-off exactly as: Seungjun Ahn | Head of BD Japan | Headout (in English).
-- After the email, add a line "---" then generate a short LINE message version in Japanese (3-4 sentences max, polite but concise).
-- No em dashes. Plain text only.`
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/lead-finder/email', {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 1000,
-          system: sys,
-          messages: [{ role: 'user', content: 'Write the email now.' }],
+          companyName: lead.name,
+          city: lead.city,
+          description: lead.description ?? '',
+          whyCompany: u1,
+          whyHeadout: u2,
+          meetingDates: u3,
+          otherNotes: u4,
         }),
       })
-      if (!res.ok) throw new Error(`API error ${res.status}`)
-      const data = (await res.json()) as {
-        content?: Array<{ type: string; text?: string }>
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(body.error || `API error ${res.status}`)
       }
-      const text = (data.content ?? [])
-        .filter((b) => b.type === 'text')
-        .map((b) => b.text ?? '')
-        .join('\n')
-        .trim()
-      setOutput(text)
+      const data = (await res.json()) as { text: string }
+      setOutput(data.text.trim())
     } catch (e) {
       setErr((e as Error).message || 'Failed to generate email')
     } finally {
@@ -1263,23 +1206,14 @@ Requirements:
    Settings Modal
    ============================================================ */
 function SettingsModal({
-  note,
   leadCount,
   onClose,
-  onSave,
   onClearAll,
 }: {
-  note: string | null
   leadCount: number
   onClose: () => void
-  onSave: (key: string) => void
   onClearAll: () => void
 }) {
-  const [val, setVal] = useState(
-    typeof window === 'undefined'
-      ? ''
-      : window.localStorage.getItem(LS_KEY) ?? ''
-  )
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-5"
@@ -1290,21 +1224,9 @@ function SettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold mb-4">Settings</h2>
-        {note && (
-          <div className="mb-3 p-2.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none">
-            {note}
-          </div>
-        )}
-        <label className="block text-xs font-semibold text-gray-500 mb-1">
-          Anthropic API Key
-        </label>
-        <input
-          type="password"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          placeholder="sk-ant-..."
-          className="w-full p-2.5 text-sm border border-gray-200 rounded-none bg-gray-50 focus:bg-white focus:border-[#a83900] outline-none"
-        />
+        <p className="text-sm text-gray-600 mb-2">
+          Search is powered by Gemini (server-side). No API key needed.
+        </p>
         <p className="text-xs text-gray-500 mt-3">
           Total leads stored: <strong>{leadCount}</strong>
         </p>
@@ -1320,12 +1242,6 @@ function SettingsModal({
             className="px-4 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-none hover:border-gray-500"
           >
             Close
-          </button>
-          <button
-            onClick={() => onSave(val.trim())}
-            className="px-4 py-2 text-sm font-semibold text-white bg-[#a83900] rounded-none hover:opacity-90"
-          >
-            Save
           </button>
         </div>
       </div>

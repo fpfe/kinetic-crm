@@ -22,6 +22,8 @@ export default function LeadsPage() {
   const [filters, setFilters] = useState<FiltersState>(EMPTY_FILTERS)
 
   const [search, setSearch] = useState('')
+  const [interactionMatchIds, setInteractionMatchIds] = useState<Set<string>>(new Set())
+  const [searchingInteractions, setSearchingInteractions] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
@@ -60,6 +62,32 @@ export default function LeadsPage() {
     refresh()
   }, [refresh])
 
+  // ─────────── interaction search (debounced) ───────────
+  useEffect(() => {
+    const q = search.trim()
+    if (!q) {
+      setInteractionMatchIds(new Set())
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchingInteractions(true)
+      try {
+        const res = await fetch(
+          `/api/interactions/search?q=${encodeURIComponent(q)}`
+        )
+        if (res.ok) {
+          const ids: string[] = await res.json()
+          setInteractionMatchIds(new Set(ids))
+        }
+      } catch {
+        // ignore
+      } finally {
+        setSearchingInteractions(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
   // ─────────── filtering ───────────
   const filteredLeads = useMemo(() => {
     const now = Date.now()
@@ -71,9 +99,20 @@ export default function LeadsPage() {
     const q = search.toLowerCase()
     return leads.filter((l) => {
       if (q) {
-        const name = (l.contactName || '').toLowerCase()
-        const company = (l.company || '').toLowerCase()
-        if (!name.includes(q) && !company.includes(q)) return false
+        // Search across all lead text fields
+        const searchable = [
+          l.contactName,
+          l.company,
+          l.serviceType,
+          l.leadSource,
+          l.region,
+          l.notes,
+        ]
+          .join(' ')
+          .toLowerCase()
+        const matchesLead = searchable.includes(q)
+        const matchesInteraction = interactionMatchIds.has(l.id)
+        if (!matchesLead && !matchesInteraction) return false
       }
       if (filters.serviceType && l.serviceType !== filters.serviceType)
         return false
@@ -87,7 +126,7 @@ export default function LeadsPage() {
       }
       return true
     })
-  }, [leads, filters, search])
+  }, [leads, filters, search, interactionMatchIds])
 
   const selectedIds = useMemo(
     () => Object.keys(rowSelection).filter((id) => rowSelection[id]),

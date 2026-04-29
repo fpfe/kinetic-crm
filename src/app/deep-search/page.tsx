@@ -52,9 +52,18 @@ type Brief = {
     listed_on_otas: string[]
     recent_news: string | null
   }
+  service_type?: string
+  market_demand_tier?: number
   score: number
   score_rationale: string
   next_action: string
+}
+
+const TIER_LABELS: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: 'Tier 1 — Highest demand', color: '#085041', bg: '#E1F5EE' },
+  2: { label: 'Tier 2 — High demand', color: '#0C447C', bg: '#E6F1FB' },
+  3: { label: 'Tier 3 — Moderate demand', color: '#633806', bg: '#FAEEDA' },
+  4: { label: 'Tier 4 — Standard', color: '#5F5E5A', bg: '#F1EFE8' },
 }
 
 function scoreColor100(score: number): string {
@@ -86,6 +95,8 @@ function buildNotes(b: Brief): string {
   if (c.inquiry_form_url) parts.push(`Inquiry form: ${c.inquiry_form_url}`)
   if (c.linkedin_url) parts.push(`LinkedIn: ${c.linkedin_url}`)
   parts.push(`Score: ${b.score}/100 — ${b.score_rationale}`)
+  if (b.service_type) parts.push(`Service type: ${b.service_type}`)
+  if (b.market_demand_tier) parts.push(`Market demand: Tier ${b.market_demand_tier} (DBJ-JTBF 2025)`)
   if (b.companies.length > 1) {
     const co = b.companies
       .slice(1)
@@ -104,6 +115,8 @@ function formatBriefMarkdown(b: Brief): string {
   lines.push(`# ${b.activity_title}`)
   lines.push('')
   lines.push(`**Score:** ${b.score}/100 — ${b.score_rationale}`)
+  if (b.service_type) lines.push(`**Service type:** ${b.service_type}`)
+  if (b.market_demand_tier) lines.push(`**Market demand:** Tier ${b.market_demand_tier} (DBJ-JTBF 2025 Survey)`)
   lines.push('')
   lines.push('## Operating companies')
   b.companies.forEach((c) => {
@@ -552,7 +565,7 @@ function BriefCard({
         email: '',
         phone: primary.phone ?? '',
         company: primary.legal_name_en,
-        serviceType: primary.role,
+        serviceType: brief.service_type || primary.role,
         leadSource: 'Deep Search',
         assignedTo: 'Seungjun Ahn',
         status: 'New',
@@ -607,6 +620,34 @@ function BriefCard({
         >
           {brief.score}
         </span>
+      </div>
+      {/* Market demand tier + service type badges */}
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        {brief.market_demand_tier && TIER_LABELS[brief.market_demand_tier] && (
+          <span
+            className="text-[11px] font-bold px-2.5 py-1 rounded-none"
+            style={{
+              background: TIER_LABELS[brief.market_demand_tier].bg,
+              color: TIER_LABELS[brief.market_demand_tier].color,
+            }}
+          >
+            {TIER_LABELS[brief.market_demand_tier].label}
+            {' (+'}
+            {brief.market_demand_tier === 1
+              ? 20
+              : brief.market_demand_tier === 2
+                ? 15
+                : brief.market_demand_tier === 3
+                  ? 10
+                  : 5}
+            {')'}
+          </span>
+        )}
+        {brief.service_type && (
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-none bg-gray-100 text-gray-600">
+            {brief.service_type}
+          </span>
+        )}
       </div>
       {brief.score_rationale && (
         <p className="text-xs text-gray-500 mt-2">{brief.score_rationale}</p>

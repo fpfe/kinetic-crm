@@ -440,6 +440,75 @@ const INTERACTION_COLS: (keyof Interaction)[] = [
 ]
 const INTERACTION_LAST = 'H'
 
+/**
+ * Basic word stemmer — strips common English suffixes so
+ * "pricing" → "pric", "priced" → "pric", "price" → "pric"
+ * "meeting" → "meet", "contracted" → "contract"
+ */
+function stem(word: string): string {
+  let w = word.toLowerCase().trim()
+  if (w.length <= 3) return w
+  // Order matters — try longest suffixes first
+  const suffixes = ['ation', 'tion', 'ment', 'ness', 'ing', 'able', 'ible', 'ful', 'ous', 'ive', 'ed', 'er', 'es', 'ly', 's']
+  for (const s of suffixes) {
+    if (w.endsWith(s) && w.length - s.length >= 3) {
+      w = w.slice(0, -s.length)
+      break
+    }
+  }
+  // Remove trailing 'e' if stem is long enough (e.g. "price" → "pric")
+  if (w.endsWith('e') && w.length > 3) w = w.slice(0, -1)
+  return w
+}
+
+/** Check if query matches text using both exact and stemmed matching */
+function fuzzyMatch(text: string, query: string): boolean {
+  const lower = text.toLowerCase()
+  // Direct substring match
+  if (lower.includes(query)) return true
+  // Stemmed match: stem each word in the text and check against stemmed query
+  const stemmedQuery = stem(query)
+  if (stemmedQuery.length < 3) return false
+  const words = lower.split(/[\s,#]+/).filter(Boolean)
+  return words.some((w) => {
+    const stemmedWord = stem(w)
+    return stemmedWord.includes(stemmedQuery) || stemmedQuery.includes(stemmedWord)
+  })
+}
+
+/** Search all interactions — returns leadIds whose interactions match the query */
+export async function searchInteractions(
+  query: string
+): Promise<string[]> {
+  try {
+    const sheets = await getSheets()
+    await ensureTab(sheets, INTERACTIONS_TAB, INTERACTION_COLS as string[])
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: `${INTERACTIONS_TAB}!A2:${INTERACTION_LAST}`,
+    })
+    const rows = res.data.values ?? []
+    const q = query.toLowerCase()
+    const matchingLeadIds = new Set<string>()
+    for (const r of rows) {
+      if (!r[0]) continue
+      const interaction = rowToObj<Interaction>(INTERACTION_COLS, r)
+      const searchable = [
+        interaction.title,
+        interaction.body,
+        interaction.tags,
+      ].join(' ')
+      if (fuzzyMatch(searchable, q)) {
+        matchingLeadIds.add(interaction.leadId)
+      }
+    }
+    return Array.from(matchingLeadIds)
+  } catch (err) {
+    console.error('[sheets] searchInteractions failed', err)
+    throw err
+  }
+}
+
 export async function getInteractionsByLeadId(
   leadId: string
 ): Promise<Interaction[]> {
@@ -476,6 +545,33 @@ export async function createInteraction(
     return item
   } catch (err) {
     console.error('[sheets] createInteraction failed', err)
+    throw err
+  }
+}
+
+export async function updateInteraction(
+  id: string,
+  patch: Partial<Interaction>
+): Promise<Interaction | null> {
+  try {
+    const sheets = await getSheets()
+    const rowNum = await findRowInTab(sheets, INTERACTIONS_TAB, id)
+    if (rowNum === -1) return null
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: `${INTERACTIONS_TAB}!A${rowNum}:${INTERACTION_LAST}${rowNum}`,
+    })
+    const current = rowToObj<Interaction>(INTERACTION_COLS, existing.data.values?.[0] ?? [])
+    const merged: Interaction = { ...current, ...patch, id }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId(),
+      range: `${INTERACTIONS_TAB}!A${rowNum}:${INTERACTION_LAST}${rowNum}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [objToRow(INTERACTION_COLS, merged)] },
+    })
+    return merged
+  } catch (err) {
+    console.error('[sheets] updateInteraction failed', err)
     throw err
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import type { Interaction, InteractionType } from '@/types'
+import type { Interaction, InteractionType, Lead } from '@/types'
 
 const TYPE_META: Record<
   InteractionType,
@@ -65,6 +65,8 @@ const TYPE_META: Record<
   },
 }
 
+const ALL_TYPES: InteractionType[] = ['call', 'email', 'meeting', 'video_call', 'note']
+
 function fmtDate(s: string): string {
   if (!s) return ''
   const d = new Date(s)
@@ -76,10 +78,15 @@ function fmtDate(s: string): string {
 
 const todayISO = () => new Date().toISOString().slice(0, 10)
 
-export default function InteractionLog({ leadId }: { leadId: string }) {
+export default function InteractionLog({ leadId, lead }: { leadId: string; lead?: Lead }) {
   const [items, setItems] = useState<Interaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
+  const [formMode, setFormMode] = useState<'add' | 'edit' | null>(null)
+  const [editTarget, setEditTarget] = useState<Interaction | null>(null)
+  const [filterType, setFilterType] = useState<InteractionType | 'all'>('all')
+  const [filterTag, setFilterTag] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [emailOpen, setEmailOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -97,6 +104,52 @@ export default function InteractionLog({ leadId }: { leadId: string }) {
     load()
   }, [load])
 
+  // Collect all unique tags across interactions
+  const allTags: { tag: string; count: number }[] = (() => {
+    const map = new Map<string, number>()
+    for (const it of items) {
+      const tags = it.tags.split(',').map((t) => t.trim()).filter(Boolean)
+      for (const tag of tags) {
+        map.set(tag, (map.get(tag) || 0) + 1)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+  })()
+
+  const filtered = items.filter((i) => {
+    if (filterType !== 'all' && i.type !== filterType) return false
+    if (filterTag) {
+      const tags = i.tags.split(',').map((t) => t.trim())
+      if (!tags.includes(filterTag)) return false
+    }
+    return true
+  })
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Delete this interaction?')) return
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/interactions/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      setItems((prev) => prev.filter((i) => i.id !== id))
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // Count per type for filter badges
+  const typeCounts = items.reduce(
+    (acc, i) => {
+      acc[i.type] = (acc[i.type] || 0) + 1
+      return acc
+    },
+    {} as Record<string, number>
+  )
+
   return (
     <section
       className="bg-white p-8"
@@ -105,26 +158,88 @@ export default function InteractionLog({ leadId }: { leadId: string }) {
         border: '1px solid rgba(228,190,177,0.05)',
       }}
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2
           className="font-display font-bold text-[24px] text-[#181c23]"
           style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
         >
           Interaction Log
         </h2>
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="text-[#a83900] text-[13px] font-bold inline-flex items-center gap-1.5 hover:opacity-80"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="16" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-          </svg>
-          Add Interaction
-        </button>
+        <div className="flex items-center gap-3">
+          {lead && (
+            <button
+              type="button"
+              onClick={() => setEmailOpen(true)}
+              className="text-[13px] font-bold inline-flex items-center gap-1.5 text-gray-500 hover:text-[#a83900] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 7l9 6 9-6" />
+              </svg>
+              Generate Cold Email
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setEditTarget(null)
+              setFormMode('add')
+            }}
+            className="text-[#a83900] text-[13px] font-bold inline-flex items-center gap-1.5 hover:opacity-80"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="16" />
+              <line x1="8" y1="12" x2="16" y2="12" />
+            </svg>
+            Add Interaction
+          </button>
+        </div>
       </div>
+
+      {/* Type filter pills */}
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-5">
+          <FilterPill
+            label="All"
+            count={items.length}
+            active={filterType === 'all'}
+            onClick={() => setFilterType('all')}
+          />
+          {ALL_TYPES.map((t) => {
+            const count = typeCounts[t] || 0
+            if (count === 0) return null
+            return (
+              <FilterPill
+                key={t}
+                label={TYPE_META[t].label}
+                count={count}
+                active={filterType === t}
+                color={TYPE_META[t].fg}
+                onClick={() => setFilterType(t)}
+              />
+            )
+          })}
+          {/* Tag filters */}
+          {allTags.length > 0 && (
+            <>
+              <span className="text-gray-300 mx-1">|</span>
+              {allTags.map((t) => (
+                <FilterPill
+                  key={t.tag}
+                  label={t.tag}
+                  count={t.count}
+                  active={filterTag === t.tag}
+                  color="#685588"
+                  onClick={() =>
+                    setFilterTag(filterTag === t.tag ? null : t.tag)
+                  }
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <Skeleton />
@@ -137,35 +252,74 @@ export default function InteractionLog({ leadId }: { leadId: string }) {
             Add the first interaction to start the log
           </div>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-8 text-center text-gray-400 text-sm">
+          No {filterType !== 'all' ? TYPE_META[filterType as InteractionType].label.toLowerCase() : ''} interactions found
+        </div>
       ) : (
         <div className="relative pl-14">
           <div className="absolute left-[19px] top-2 bottom-2 w-[2px] bg-[#ebedf8]" />
           <div className="flex flex-col gap-6">
-            {items.map((it) => {
+            {filtered.map((it) => {
               const meta = TYPE_META[it.type] ?? TYPE_META.note
               const tags = it.tags
                 .split(',')
                 .map((t) => t.trim())
                 .filter(Boolean)
+              const isDeleting = deletingId === it.id
               return (
-                <div key={it.id} className="relative">
+                <div key={it.id} className="relative group">
                   <div
                     className="absolute -left-14 top-0 w-10 h-10 rounded-none flex items-center justify-center"
                     style={{ background: meta.bg, color: meta.fg }}
                   >
                     {meta.icon}
                   </div>
-                  <div className="bg-[#f1f3fe] rounded-none p-5">
+                  <div
+                    className="bg-[#f1f3fe] rounded-none p-5"
+                    style={{ opacity: isDeleting ? 0.5 : 1 }}
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="font-bold text-[16px] text-[#181c23]">
                         {it.title}
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold whitespace-nowrap">
-                        {fmtDate(it.date)}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold whitespace-nowrap">
+                          {fmtDate(it.date)}
+                        </div>
+                        {/* Edit & Delete buttons — visible on hover */}
+                        <div className="hidden group-hover:flex items-center gap-1">
+                          <button
+                            type="button"
+                            title="Edit"
+                            onClick={() => {
+                              setEditTarget(it)
+                              setFormMode('edit')
+                            }}
+                            className="p-1 text-gray-400 hover:text-[#a83900]"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            title="Delete"
+                            disabled={isDeleting}
+                            onClick={() => handleDelete(it.id)}
+                            className="p-1 text-gray-400 hover:text-red-600"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div
-                      className="text-[14px] text-[#5b4137] mt-2"
+                      className="text-[14px] text-[#5b4137] mt-2 whitespace-pre-wrap"
                       style={{ lineHeight: 1.6 }}
                     >
                       {it.body}
@@ -173,13 +327,26 @@ export default function InteractionLog({ leadId }: { leadId: string }) {
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {tags.map((t) => (
-                          <span
+                          <button
                             key={t}
-                            className="px-2 py-0.5 bg-white rounded-none text-[10px] font-bold text-[#5b4137]"
+                            type="button"
+                            onClick={() =>
+                              setFilterTag(filterTag === t ? null : t)
+                            }
+                            className="px-2 py-0.5 rounded-none text-[10px] font-bold cursor-pointer hover:opacity-80 transition-colors"
+                            style={{
+                              background: filterTag === t ? '#685588' : 'white',
+                              color: filterTag === t ? '#fff' : '#5b4137',
+                            }}
                           >
                             {t}
-                          </span>
+                          </button>
                         ))}
+                      </div>
+                    )}
+                    {it.createdBy && it.createdBy !== 'You' && (
+                      <div className="text-[11px] text-gray-400 mt-2">
+                        by {it.createdBy}
                       </div>
                     )}
                   </div>
@@ -190,17 +357,81 @@ export default function InteractionLog({ leadId }: { leadId: string }) {
         </div>
       )}
 
-      {adding && (
-        <AddModal
+      {formMode && (
+        <FormModal
+          mode={formMode}
           leadId={leadId}
-          onClose={() => setAdding(false)}
+          initial={editTarget}
+          onClose={() => {
+            setFormMode(null)
+            setEditTarget(null)
+          }}
           onSaved={() => {
-            setAdding(false)
+            setFormMode(null)
+            setEditTarget(null)
             load()
           }}
         />
       )}
+
+      {emailOpen && lead && (
+        <ColdEmailModal
+          lead={lead}
+          onClose={() => setEmailOpen(false)}
+          onSaveAsInteraction={(subject, body) => {
+            setEmailOpen(false)
+            // Auto-create an email interaction with the generated content
+            fetch('/api/interactions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                leadId,
+                type: 'email',
+                title: subject,
+                body,
+                tags: '#ColdEmail',
+                date: todayISO(),
+                createdBy: 'You',
+              }),
+            }).then(() => load())
+          }}
+        />
+      )}
     </section>
+  )
+}
+
+function FilterPill({
+  label,
+  count,
+  active,
+  color,
+  onClick,
+}: {
+  label: string
+  count: number
+  active: boolean
+  color?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-none transition-colors"
+      style={{
+        background: active ? (color || '#a83900') : '#f1f3fe',
+        color: active ? '#fff' : color || '#6b7280',
+      }}
+    >
+      {label}
+      <span
+        className="text-[10px] font-semibold"
+        style={{ opacity: 0.7 }}
+      >
+        {count}
+      </span>
+    </button>
   )
 }
 
@@ -214,37 +445,55 @@ function Skeleton() {
   )
 }
 
-function AddModal({
+function FormModal({
+  mode,
   leadId,
+  initial,
   onClose,
   onSaved,
 }: {
+  mode: 'add' | 'edit'
   leadId: string
+  initial: Interaction | null
   onClose: () => void
   onSaved: () => void
 }) {
-  const [type, setType] = useState<InteractionType>('call')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [tags, setTags] = useState('')
-  const [date, setDate] = useState(todayISO())
-  const [createdBy, setCreatedBy] = useState('You')
+  const [type, setType] = useState<InteractionType>(initial?.type || 'call')
+  const [title, setTitle] = useState(initial?.title || '')
+  const [body, setBody] = useState(initial?.body || '')
+  const [tags, setTags] = useState(initial?.tags || '')
+  const [date, setDate] = useState(initial?.date || todayISO())
+  const [createdBy, setCreatedBy] = useState(initial?.createdBy || 'You')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !body.trim()) return
+    if (!title.trim()) {
+      setError('Title is required')
+      return
+    }
     setBusy(true)
+    setError(null)
     try {
-      const res = await fetch('/api/interactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId, type, title, body, tags, date, createdBy }),
-      })
-      if (!res.ok) throw new Error('save failed')
+      if (mode === 'edit' && initial) {
+        const res = await fetch(`/api/interactions/${initial.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, title, body, tags, date, createdBy }),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || 'Update failed')
+      } else {
+        const res = await fetch('/api/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leadId, type, title, body, tags, date, createdBy }),
+        })
+        if (!res.ok) throw new Error((await res.json()).error || 'Save failed')
+      }
       onSaved()
     } catch (err) {
-      alert((err as Error).message)
+      setError((err as Error).message)
     } finally {
       setBusy(false)
     }
@@ -266,7 +515,7 @@ function AddModal({
           className="font-display font-bold text-[20px] mb-5 text-[#181c23]"
           style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
         >
-          New Interaction
+          {mode === 'edit' ? 'Edit Interaction' : 'New Interaction'}
         </h3>
         <div className="flex flex-col gap-3">
           <Field label="Type">
@@ -292,7 +541,6 @@ function AddModal({
           </Field>
           <Field label="Body">
             <textarea
-              required
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={4}
@@ -323,6 +571,13 @@ function AddModal({
             />
           </Field>
         </div>
+
+        {error && (
+          <div className="text-[12px] text-red-600 bg-red-50 p-2 rounded-none mt-3">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 mt-6">
           <button
             type="button"
@@ -337,7 +592,7 @@ function AddModal({
             className="brand-gradient text-white text-[13px] font-bold px-5 py-2 rounded-none disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, #a83900 0%, #ff5a00 100%)' }}
           >
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Save'}
           </button>
         </div>
       </form>
@@ -353,5 +608,168 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </div>
       {children}
     </label>
+  )
+}
+
+/* ============================================================
+   Cold Email Modal (uses server-side Gemini)
+   ============================================================ */
+function ColdEmailModal({
+  lead,
+  onClose,
+  onSaveAsInteraction,
+}: {
+  lead: Lead
+  onClose: () => void
+  onSaveAsInteraction: (subject: string, body: string) => void
+}) {
+  const [whyCompany, setWhyCompany] = useState('')
+  const [whyHeadout, setWhyHeadout] = useState('')
+  const [meetingDates, setMeetingDates] = useState('')
+  const [otherNotes, setOtherNotes] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [output, setOutput] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const generate = async () => {
+    setGenerating(true)
+    setErr(null)
+    setOutput(null)
+    try {
+      const res = await fetch('/api/lead-finder/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          companyName: lead.company || lead.contactName,
+          city: lead.region || 'Japan',
+          description: lead.notes ?? '',
+          whyCompany,
+          whyHeadout,
+          meetingDates,
+          otherNotes,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(body.error || `API error ${res.status}`)
+      }
+      const data = (await res.json()) as { text: string }
+      setOutput(data.text.trim())
+    } catch (e) {
+      setErr((e as Error).message || 'Failed to generate email')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleCopy = () => {
+    if (output) {
+      navigator.clipboard.writeText(output)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  // Extract subject line from output for saving as interaction
+  const extractSubject = (): string => {
+    if (!output) return 'Cold Email'
+    const match = output.match(/件名[:：]\s*(.+)/)?.[1]
+    return match ? `Cold Email: ${match}` : 'Cold Email'
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,15,30,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-2xl max-h-[90vh] overflow-auto p-7"
+        style={{ borderRadius: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3
+          className="font-display font-bold text-[20px] mb-1 text-[#181c23]"
+          style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}
+        >
+          Generate Cold Email
+        </h3>
+        <p className="text-[13px] text-gray-500 mb-5">
+          {lead.company || lead.contactName} · {lead.region || 'Japan'}
+        </p>
+
+        {(
+          [
+            ['Why this company', whyCompany, setWhyCompany, 'What makes them a good Headout partner?'],
+            ['Why Headout helps them', whyHeadout, setWhyHeadout, 'What value does Headout bring?'],
+            ['Meeting date options', meetingDates, setMeetingDates, 'Propose 2-3 date/time options'],
+            ['Other talking points', otherNotes, setOtherNotes, 'Anything else to mention?'],
+          ] as Array<[string, string, (v: string) => void, string]>
+        ).map(([label, val, setter, ph]) => (
+          <div key={label} className="mb-3">
+            <div className="text-[12px] font-semibold text-gray-600 mb-1">
+              {label}
+            </div>
+            <textarea
+              value={val}
+              onChange={(e) => setter(e.target.value)}
+              placeholder={ph}
+              rows={2}
+              className="w-full bg-[#f1f3fe] rounded-none px-3 py-2 text-[13px] resize-none"
+            />
+          </div>
+        ))}
+
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-[13px] font-bold text-gray-600 rounded-none hover:bg-[#f1f3fe]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={generating}
+            className="text-white text-[13px] font-bold px-5 py-2 rounded-none disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #a83900 0%, #ff5a00 100%)' }}
+          >
+            {generating ? 'Generating…' : 'Generate Email'}
+          </button>
+        </div>
+
+        {err && (
+          <div className="text-[12px] text-red-600 bg-red-50 p-2 rounded-none mt-3">
+            {err}
+          </div>
+        )}
+
+        {output && (
+          <div className="mt-5 border-t border-gray-200 pt-5">
+            <pre className="p-4 text-[13px] leading-relaxed bg-[#f1f3fe] rounded-none whitespace-pre-wrap font-sans">
+              {output}
+            </pre>
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="px-3 py-1.5 text-[12px] font-bold text-gray-600 border border-gray-200 rounded-none hover:border-gray-400"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onSaveAsInteraction(extractSubject(), output)}
+                className="px-3 py-1.5 text-[12px] font-bold text-[#a83900] border border-[#a83900]/30 rounded-none hover:bg-[#a83900]/5"
+              >
+                Save to Interaction Log
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

@@ -174,7 +174,7 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
       {/* Bento grid */}
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
-          <InteractionLog leadId={lead.id} />
+          <InteractionLog leadId={lead.id} lead={lead} />
           <DocumentStorage leadId={lead.id} />
         </div>
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
