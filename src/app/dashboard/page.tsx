@@ -247,12 +247,12 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-10 gap-6 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 sm:mb-10 gap-4 sm:gap-6">
         <div>
           <h1
             className="font-display text-[#181c23]"
             style={{
-              fontSize: '3rem',
+              fontSize: 'clamp(1.75rem, 5vw, 3rem)',
               fontWeight: 800,
               letterSpacing: '-0.02em',
               lineHeight: 1.05,
@@ -260,11 +260,11 @@ export default function DashboardPage() {
           >
             Dashboard
           </h1>
-          <div className="mt-2 text-[16px] text-[#5b4137]">
+          <div className="mt-1 sm:mt-2 text-[13px] sm:text-[16px] text-[#5b4137]">
             Acquisition performance · Japan Market
           </div>
         </div>
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-2 sm:gap-3 sm:pt-2">
           <div ref={menuWrapRef} className="relative">
             <button
               type="button"
@@ -402,7 +402,7 @@ export default function DashboardPage() {
       )}
 
       {/* Footer */}
-      <div className="pt-10 mt-10 flex items-center justify-between flex-wrap gap-4">
+      <div className="pt-6 sm:pt-10 mt-6 sm:mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div
           className="text-[10px] uppercase font-bold text-[#181c23]/40"
           style={{ letterSpacing: '0.22em' }}

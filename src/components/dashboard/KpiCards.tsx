@@ -48,7 +48,7 @@ export default function KpiCards({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Card 1 — Total Leads */}
-      <div className="bg-white rounded-none p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#a83900]/5 flex items-center justify-center">
             <span
@@ -64,13 +64,13 @@ export default function KpiCards({
             <TrendBadge label="Empty" tone="gray" />
           )}
         </div>
-        <div className="mt-8 text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
+        <div className="mt-4 sm:mt-8 text-[11px] sm:text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
           Total Leads
         </div>
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
+            style={{ fontSize: 'clamp(2.5rem, 8vw, 4rem)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {totalLeads}
           </span>
@@ -83,7 +83,7 @@ export default function KpiCards({
       </div>
 
       {/* Card 2 — Added This Week */}
-      <div className="bg-white rounded-none p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#b60056]/5 flex items-center justify-center">
             <span
@@ -99,13 +99,13 @@ export default function KpiCards({
             <TrendBadge label="None yet" tone="gray" />
           )}
         </div>
-        <div className="mt-8 text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
+        <div className="mt-4 sm:mt-8 text-[11px] sm:text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
           Added This Week
         </div>
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
+            style={{ fontSize: 'clamp(2.5rem, 8vw, 4rem)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {leadsThisWeek}
           </span>
@@ -118,7 +118,7 @@ export default function KpiCards({
       </div>
 
       {/* Card 3 — Deep Searches This Week */}
-      <div className="bg-white rounded-none p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#685588]/5 flex items-center justify-center">
             <span
@@ -130,13 +130,13 @@ export default function KpiCards({
           </div>
           <TrendBadge label={searchLabel} tone={searchTone} />
         </div>
-        <div className="mt-8 text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
+        <div className="mt-4 sm:mt-8 text-[11px] sm:text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
           Deep Searches This Week
         </div>
         <div className="mt-2 flex items-baseline gap-1">
           <span
             className="font-display text-[#181c23]"
-            style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
+            style={{ fontSize: 'clamp(2.5rem, 8vw, 4rem)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}
           >
             {deepSearchesThisWeek}
           </span>

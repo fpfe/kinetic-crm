@@ -12,6 +12,7 @@ import ServiceTypeBreakdown from '@/components/reports/ServiceTypeBreakdown'
 import InsightsPanel from '@/components/reports/InsightsPanel'
 import ConversionFunnel from '@/components/reports/ConversionFunnel'
 import LeadSourceChart from '@/components/reports/LeadSourceChart'
+import WinLossAnalysis from '@/components/reports/WinLossAnalysis'
 
 const DATE_LABELS: Record<ReportFilterValue['dateRange'], string> = {
   all: 'all leads',
@@ -239,6 +240,7 @@ export default function ReportsPage() {
           </div>
 
           <RepPerformanceTable leads={filtered} />
+          <WinLossAnalysis leads={filtered} />
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             <div className="xl:col-span-2">
               <ServiceTypeBreakdown leads={filtered} />

@@ -24,7 +24,11 @@ function titleKeyFor(pathname: string | null): string {
   return 'Headout Japan CRM'
 }
 
-export default function TopNav() {
+type Props = {
+  onMenuToggle?: () => void
+}
+
+export default function TopNav({ onMenuToggle }: Props) {
   const pathname = usePathname()
   const { t } = useI18n()
   const titleKey = titleKeyFor(pathname)
@@ -32,7 +36,7 @@ export default function TopNav() {
   const { open: openPalette } = useCommandPalette()
   return (
     <header
-      className="sticky top-0 z-20 h-[60px] flex items-center px-10 gap-6"
+      className="sticky top-0 z-20 h-[52px] sm:h-[60px] flex items-center px-4 sm:px-6 lg:px-10 gap-3 sm:gap-6"
       style={{
         background: 'rgba(255,255,255,0.75)',
         backdropFilter: 'blur(10px)',
@@ -40,15 +44,24 @@ export default function TopNav() {
         borderBottom: '1px solid rgba(24,28,35,0.06)',
       }}
     >
-      <div className="font-display font-bold text-[15px] text-[#181c23]">
+      {/* Hamburger — mobile only */}
+      <button
+        type="button"
+        onClick={onMenuToggle}
+        className="lg:hidden w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-[#181C23] -ml-1"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 22 }}>menu</span>
+      </button>
+
+      <div className="font-display font-bold text-[13px] sm:text-[15px] text-[#181c23] truncate shrink-0">
         {title}
       </div>
 
-      <div className="flex-1 flex justify-center">
+      <div className="flex-1 flex justify-center min-w-0">
         <button
           type="button"
           onClick={openPalette}
-          className="flex items-center gap-2.5 w-[420px] px-4 py-2 rounded-none text-[13px] text-[#6B7280] hover:text-[#181C23] transition-colors cursor-pointer"
+          className="hidden sm:flex items-center gap-2.5 w-full max-w-[420px] px-4 py-2 rounded-none text-[13px] text-[#6B7280] hover:text-[#181C23] transition-colors cursor-pointer"
           style={{ background: '#EBEDF8' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
@@ -62,12 +75,20 @@ export default function TopNav() {
             ⌘K
           </span>
         </button>
+        {/* Mobile search icon */}
+        <button
+          type="button"
+          onClick={openPalette}
+          className="sm:hidden w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-[#181C23]"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>search</span>
+        </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageToggle />
         <button
-          className="w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-[#181C23] transition-colors"
+          className="hidden sm:flex w-9 h-9 items-center justify-center text-[#6B7280] hover:text-[#181C23] transition-colors"
           title="Notifications"
         >
           <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
@@ -75,7 +96,7 @@ export default function TopNav() {
           </span>
         </button>
         <button
-          className="w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-[#181C23] transition-colors"
+          className="hidden sm:flex w-9 h-9 items-center justify-center text-[#6B7280] hover:text-[#181C23] transition-colors"
           title="Settings"
         >
           <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
@@ -83,7 +104,7 @@ export default function TopNav() {
           </span>
         </button>
         <div
-          className="w-9 h-9 rounded-none text-white text-xs font-bold flex items-center justify-center"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-none text-white text-xs font-bold flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, #A83900 0%, #FF5A00 100%)' }}
           aria-label="user"
         >

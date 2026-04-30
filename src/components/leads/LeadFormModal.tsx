@@ -33,6 +33,7 @@ const EMPTY_FORM = {
   status: 'New' as LeadStatus,
   notes: '',
   dealValue: '',
+  tags: '',
 }
 
 const inputStyle: React.CSSProperties = {
@@ -94,6 +95,7 @@ export default function LeadFormModal({
         status: initial.status,
         notes: initial.notes,
         dealValue: initial.dealValue ?? '',
+        tags: initial.tags ?? '',
       })
     } else if (initial) {
       setForm({ ...EMPTY_FORM, ...initial } as typeof EMPTY_FORM)
@@ -314,6 +316,16 @@ export default function LeadFormModal({
               </select>
             </Field>
           </div>
+          <Field label="Tags">
+            <input
+              type="text"
+              style={inputStyle}
+              placeholder="e.g. priority, tokyo, restaurant (comma-separated)"
+              value={form.tags}
+              onChange={(e) => update('tags', e.target.value)}
+            />
+          </Field>
+
           <Field label="Notes">
             <textarea
               rows={3}

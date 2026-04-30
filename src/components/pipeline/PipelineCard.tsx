@@ -42,6 +42,26 @@ function daysSince(iso: string): number {
 
 const STALE_DAYS = 7
 
+const TAG_COLORS = [
+  { bg: '#ece6f4', text: '#685588' },
+  { bg: '#dbeafe', text: '#1d4ed8' },
+  { bg: '#dcfce7', text: '#166534' },
+  { bg: '#fef3c7', text: '#92400e' },
+  { bg: '#fce7f3', text: '#9d174d' },
+  { bg: '#e0e7ff', text: '#3730a3' },
+]
+
+function parseTags(tags: string): string[] {
+  if (!tags) return []
+  return tags.split(',').map((t) => t.trim()).filter(Boolean)
+}
+
+function tagColor(tag: string) {
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
+}
+
 function FooterActivity({ lead }: { lead: Lead }) {
   if (lead.status === 'Negotiation') {
     return (
@@ -75,9 +95,9 @@ function FooterActivity({ lead }: { lead: Lead }) {
   )
 }
 
-type Props = { lead: Lead; index: number }
+type Props = { lead: Lead; index: number; compact?: boolean }
 
-export default function PipelineCard({ lead, index }: Props) {
+export default function PipelineCard({ lead, index, compact = false }: Props) {
   const isHot = lead.status === 'Negotiation' || lead.status === 'Proposal Sent'
   const isClosed = lead.status === 'Closed Won' || lead.status === 'Closed Lost'
   const age = daysSince(lead.createdAt)
@@ -93,7 +113,7 @@ export default function PipelineCard({ lead, index }: Props) {
           className="bg-white relative transition-transform group"
           style={{
             borderRadius: 0,
-            padding: '1.25rem',
+            padding: compact ? '0.75rem 1rem' : '1.25rem',
             border: '1px solid transparent',
             cursor: snapshot.isDragging ? 'grabbing' : 'grab',
             boxShadow: snapshot.isDragging
@@ -147,67 +167,102 @@ export default function PipelineCard({ lead, index }: Props) {
             </Link>
           </div>
 
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div
-                className="text-[10px] uppercase font-bold text-pipe-purple"
-                style={{ letterSpacing: '0.18em' }}
-              >
-                {lead.serviceType}
-              </div>
-              {isStale && (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                  style={{ background: '#fef3c7', color: '#92400e' }}
-                  title={`No update for ${age} days`}
+          {compact ? (
+            <div className="flex flex-col" style={{ minHeight: 56 }}>
+              {/* Compact view: company + deal value + minimal info */}
+              <div className="flex items-center justify-between">
+                <Link
+                  href={`/leads/${lead.id}`}
+                  className="text-[13px] font-bold text-[#181c23] hover:text-[#a83900] truncate flex-1 min-w-0"
                 >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {age}d stale
-                </span>
+                  {lead.company}
+                </Link>
+                <span className="material-symbols-outlined group-hover:opacity-0 transition-opacity ml-2 shrink-0" style={{ fontSize: 14, opacity: 0.2 }}>drag_indicator</span>
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-[10px] text-gray-500 truncate">{lead.contactName}</span>
+                <span className="text-[11px] font-bold text-[#181c23] shrink-0">{formatDealValue(lead.dealValue)}</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap" style={{ minHeight: 18 }}>
+                {isHot && (
+                  <span className="px-1.5 py-0.5 rounded-none text-[8px] font-bold uppercase bg-hot-soft text-hot-dark" style={{ letterSpacing: '0.12em' }}>Hot</span>
+                )}
+                {isStale && (
+                  <span className="px-1.5 py-0.5 text-[8px] font-bold uppercase" style={{ background: '#fef3c7', color: '#92400e', letterSpacing: '0.12em' }}>{age}d</span>
+                )}
+                {parseTags(lead.tags).slice(0, 2).map((tag) => {
+                  const c = tagColor(tag)
+                  return (
+                    <span key={tag} className="px-1.5 py-0.5 text-[8px] font-bold rounded-none" style={{ background: c.bg, color: c.text }}>{tag}</span>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col" style={{ minHeight: 150 }}>
+              {/* Detailed view: fixed-height card layout */}
+              {/* Row 1: Service type + badges */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <div
+                    className="text-[9px] uppercase font-bold text-pipe-purple truncate"
+                    style={{ letterSpacing: '0.14em' }}
+                  >
+                    {lead.serviceType}
+                  </div>
+                  {isHot && (
+                    <span className="px-1.5 py-0.5 rounded-none text-[8px] font-bold uppercase bg-hot-soft text-hot-dark shrink-0" style={{ letterSpacing: '0.1em' }}>Hot</span>
+                  )}
+                  {isStale && (
+                    <span className="px-1.5 py-0.5 text-[8px] font-bold uppercase shrink-0" style={{ background: '#fef3c7', color: '#92400e', letterSpacing: '0.1em' }}>{age}d</span>
+                  )}
+                </div>
+                <span className="material-symbols-outlined group-hover:opacity-0 transition-opacity shrink-0" style={{ fontSize: 14, opacity: 0.2 }}>drag_indicator</span>
+              </div>
+
+              {/* Row 2: Company name */}
+              <Link
+                href={`/leads/${lead.id}`}
+                className="block text-[13px] font-bold text-[#181c23] hover:text-[#a83900] mt-2 line-clamp-2"
+              >
+                {lead.company}
+              </Link>
+
+              {/* Row 3: Tags */}
+              {parseTags(lead.tags).length > 0 && (
+                <div className="flex items-center gap-1 mt-2 flex-wrap">
+                  {parseTags(lead.tags).slice(0, 3).map((tag) => {
+                    const c = tagColor(tag)
+                    return (
+                      <span key={tag} className="px-1.5 py-0.5 text-[8px] font-bold rounded-none" style={{ background: c.bg, color: c.text }}>{tag}</span>
+                    )
+                  })}
+                </div>
               )}
-            </div>
-            <span className="material-symbols-outlined group-hover:opacity-0 transition-opacity" style={{ fontSize: 16, opacity: 0.2 }}>drag_indicator</span>
-          </div>
 
-          {isHot && (
-            <span
-              className="inline-block mb-2 px-2 py-0.5 rounded-none text-[9px] font-bold uppercase bg-hot-soft text-hot-dark"
-              style={{ letterSpacing: '0.18em' }}
-            >
-              Hot Priority
-            </span>
+              {/* Row 4: Contact — pushed to middle with flex-grow */}
+              <div className="flex items-center gap-2 mt-auto pt-3">
+                <div
+                  className="w-7 h-7 rounded-none flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                  style={{ background: colorOf(lead.contactName) }}
+                >
+                  {initialsOf(lead.contactName)}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[9px] text-gray-400">Contact</span>
+                  <span className="text-[11px] font-semibold text-[#181c23] truncate">
+                    {lead.contactName}
+                  </span>
+                </div>
+              </div>
+
+              {/* Row 4: Footer — always at bottom */}
+              <div className="flex items-center justify-between mt-3 pt-2" style={{ borderTop: '1px solid #f0f0ed' }}>
+                <FooterActivity lead={lead} />
+                <span className="text-[11px] font-bold text-[#181c23]">{formatDealValue(lead.dealValue)}</span>
+              </div>
+            </div>
           )}
-
-          <Link
-            href={`/leads/${lead.id}`}
-            className="block text-[14px] font-bold text-[#181c23] hover:text-[#a83900]"
-          >
-            {lead.company}
-          </Link>
-
-          <div className="flex items-center gap-2 mt-3">
-            <div
-              className="w-8 h-8 rounded-none flex items-center justify-center text-white text-[11px] font-bold"
-              style={{ background: colorOf(lead.contactName) }}
-            >
-              {initialsOf(lead.contactName)}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500">Primary Contact</span>
-              <span className="text-[12px] font-semibold text-[#181c23]">
-                {lead.contactName}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-4">
-            <FooterActivity lead={lead} />
-            <span className="text-[12px] font-bold text-[#181c23]">{formatDealValue(lead.dealValue)}</span>
-          </div>
         </div>
       )}
     </Draggable>

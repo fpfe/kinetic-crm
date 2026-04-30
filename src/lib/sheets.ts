@@ -1,13 +1,13 @@
 import { google, sheets_v4 } from 'googleapis'
 import { randomUUID } from 'crypto'
-import type { Lead, Member, Interaction, Note, Document } from '@/types'
+import type { Lead, Member, Interaction, Note, Document, Contact } from '@/types'
 import { DEFAULT_SERVICE_TYPES } from '@/types'
 
 const SHEET_NAME = 'Leads'
 const SERVICE_TYPES_TAB = 'ServiceTypes'
 const MEMBERS_TAB = 'Members'
-const RANGE = `${SHEET_NAME}!A2:M`
-const HEADER_RANGE = `${SHEET_NAME}!A1:M1`
+const RANGE = `${SHEET_NAME}!A2:N`
+const HEADER_RANGE = `${SHEET_NAME}!A1:N1`
 
 const COLUMNS: (keyof Lead)[] = [
   'id',
@@ -23,6 +23,7 @@ const COLUMNS: (keyof Lead)[] = [
   'notes',
   'createdAt',
   'dealValue',
+  'tags',
 ]
 
 function spreadsheetId(): string {
@@ -772,6 +773,124 @@ export async function deleteDocument(id: string): Promise<boolean> {
     console.error('[sheets] deleteDocument failed', err)
     throw err
   }
+}
+
+// ─────────────────────────────────────────────
+// Contacts
+// ─────────────────────────────────────────────
+
+const CONTACTS_TAB = 'Contacts'
+const CONTACT_COLS: (keyof Contact)[] = [
+  'id',
+  'leadId',
+  'name',
+  'role',
+  'email',
+  'phone',
+  'isPrimary',
+  'createdAt',
+]
+const CONTACT_LAST = 'H'
+
+export async function getContactsByLeadId(
+  leadId: string
+): Promise<Contact[]> {
+  try {
+    const sheets = await getSheets()
+    await ensureTab(sheets, CONTACTS_TAB, CONTACT_COLS as string[])
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: `${CONTACTS_TAB}!A2:${CONTACT_LAST}`,
+    })
+    const rows = res.data.values ?? []
+    return rows
+      .filter((r) => r[0] && r[1] === leadId)
+      .map((r) => rowToObj<Contact>(CONTACT_COLS, r))
+  } catch (err) {
+    console.error('[sheets] getContactsByLeadId failed', err)
+    throw err
+  }
+}
+
+export async function createContact(
+  data: Omit<Contact, 'id' | 'createdAt'>
+): Promise<Contact> {
+  try {
+    const sheets = await getSheets()
+    await ensureTab(sheets, CONTACTS_TAB, CONTACT_COLS as string[])
+    const item: Contact = {
+      ...data,
+      id: randomUUID(),
+      createdAt: new Date().toISOString(),
+    }
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetId(),
+      range: `${CONTACTS_TAB}!A:${CONTACT_LAST}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [objToRow(CONTACT_COLS, item)] },
+    })
+    return item
+  } catch (err) {
+    console.error('[sheets] createContact failed', err)
+    throw err
+  }
+}
+
+export async function updateContact(
+  id: string,
+  patch: Partial<Contact>
+): Promise<Contact | null> {
+  try {
+    const sheets = await getSheets()
+    const rowNum = await findRowInTab(sheets, CONTACTS_TAB, id)
+    if (rowNum === -1) return null
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId(),
+      range: `${CONTACTS_TAB}!A${rowNum}:${CONTACT_LAST}${rowNum}`,
+    })
+    const current = rowToObj<Contact>(CONTACT_COLS, existing.data.values?.[0] ?? [])
+    const merged: Contact = { ...current, ...patch, id }
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId(),
+      range: `${CONTACTS_TAB}!A${rowNum}:${CONTACT_LAST}${rowNum}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [objToRow(CONTACT_COLS, merged)] },
+    })
+    return merged
+  } catch (err) {
+    console.error('[sheets] updateContact failed', err)
+    throw err
+  }
+}
+
+export async function deleteContact(id: string): Promise<boolean> {
+  try {
+    const sheets = await getSheets()
+    const rowNum = await findRowInTab(sheets, CONTACTS_TAB, id)
+    if (rowNum === -1) return false
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: spreadsheetId(),
+      range: `${CONTACTS_TAB}!A${rowNum}:${CONTACT_LAST}${rowNum}`,
+    })
+    return true
+  } catch (err) {
+    console.error('[sheets] deleteContact failed', err)
+    throw err
+  }
+}
+
+/** Clear primary flag from all contacts of a lead, then set one as primary */
+export async function setPrimaryContact(
+  leadId: string,
+  contactId: string
+): Promise<void> {
+  const contacts = await getContactsByLeadId(leadId)
+  for (const c of contacts) {
+    if (c.isPrimary === 'true' && c.id !== contactId) {
+      await updateContact(c.id, { isPrimary: 'false' })
+    }
+  }
+  await updateContact(contactId, { isPrimary: 'true' })
 }
 
 export { HEADER_RANGE }

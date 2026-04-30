@@ -11,6 +11,7 @@ import LeadFilters, {
 import LeadFormModal from '@/components/leads/LeadFormModal'
 import ViewLeadModal from '@/components/leads/ViewLeadModal'
 import DuplicateCheckModal from '@/components/leads/DuplicateCheckModal'
+import CsvImportModal from '@/components/leads/CsvImportModal'
 import { useToast } from '@/components/ui/Toast'
 
 export default function LeadsPage() {
@@ -31,6 +32,7 @@ export default function LeadsPage() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [viewingLead, setViewingLead] = useState<Lead | null>(null)
   const [dupeCheckOpen, setDupeCheckOpen] = useState(false)
+  const [csvImportOpen, setCsvImportOpen] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -166,6 +168,28 @@ export default function LeadsPage() {
     }
   }
 
+  const handleInlineEdit = async (lead: Lead, field: keyof Lead, value: string) => {
+    if (value === lead[field]) return
+    // optimistic local update
+    setLeads((prev) =>
+      prev.map((l) => (l.id === lead.id ? { ...l, [field]: value } : l))
+    )
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (!res.ok) throw new Error('Update failed')
+    } catch (err) {
+      // revert on failure
+      setLeads((prev) =>
+        prev.map((l) => (l.id === lead.id ? { ...l, [field]: lead[field] } : l))
+      )
+      toastError((err as Error).message)
+    }
+  }
+
   // ─────────── bulk actions ───────────
   async function bulkPatch(patch: Partial<Lead>, label: string) {
     const ids = [...selectedIds]
@@ -231,31 +255,41 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-8 gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-8 gap-3 sm:gap-6">
         <div>
-          <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-[#a83900]">
+          <div className="text-[10px] sm:text-[11px] tracking-[0.18em] uppercase font-bold text-[#a83900]">
             Merchant Pipeline
           </div>
-          <h1 className="font-display font-extrabold text-[2.6rem] leading-tight text-[#181c23] mt-2">
+          <h1
+            className="font-display font-extrabold leading-tight text-[#181c23] mt-1 sm:mt-2"
+            style={{ fontSize: 'clamp(1.5rem, 5vw, 2.6rem)' }}
+          >
             New Market Leads
           </h1>
         </div>
-        <div className="flex items-center gap-3 pt-2 flex-wrap justify-end">
-          <span className="px-4 py-2 rounded-none bg-gray-100 text-gray-700 text-[12px] font-bold tracking-wider">
-            {activeCount} ACTIVE LEADS
+        <div className="flex items-center gap-2 sm:gap-3 sm:pt-2 flex-wrap">
+          <span className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-none bg-gray-100 text-gray-700 text-[10px] sm:text-[12px] font-bold tracking-wider">
+            {activeCount} ACTIVE
           </span>
-          <span className="px-4 py-2 rounded-none brand-gradient text-white text-[12px] font-bold tracking-wider">
-            {hotCount} HOT MOMENTUM
+          <span className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-none brand-gradient text-white text-[10px] sm:text-[12px] font-bold tracking-wider">
+            {hotCount} HOT
           </span>
           <button
+            onClick={() => setCsvImportOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-none border border-gray-300 text-gray-700 hover:border-[#a83900] hover:text-[#a83900] transition"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>upload_file</span>
+            Import CSV
+          </button>
+          <button
             onClick={() => setDupeCheckOpen(true)}
-            className="text-sm font-semibold px-5 py-2.5 rounded-none border border-gray-300 text-gray-700 hover:border-[#a83900] hover:text-[#a83900] transition"
+            className="hidden sm:inline-flex text-sm font-semibold px-4 py-2.5 rounded-none border border-gray-300 text-gray-700 hover:border-[#a83900] hover:text-[#a83900] transition"
           >
             Check Duplicates
           </button>
           <button
             onClick={openCreate}
-            className="brand-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-none shadow-sm hover:opacity-95 transition"
+            className="brand-gradient text-white text-[12px] sm:text-sm font-semibold px-3 sm:px-5 py-2 sm:py-2.5 rounded-none shadow-sm hover:opacity-95 transition"
           >
             + New Merchant
           </button>
@@ -303,6 +337,8 @@ export default function LeadsPage() {
           ))}
         </div>
       ) : (
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="min-w-[800px] sm:min-w-0 px-4 sm:px-0">
         <LeadTable
           leads={filteredLeads}
           rowSelection={rowSelection}
@@ -311,7 +347,10 @@ export default function LeadsPage() {
           onEdit={openEdit}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
+          onInlineEdit={handleInlineEdit}
         />
+        </div>
+        </div>
       )}
 
       <LeadFormModal
@@ -341,6 +380,15 @@ export default function LeadsPage() {
         onClose={() => setDupeCheckOpen(false)}
         onMerged={() => {
           setDupeCheckOpen(false)
+          refresh()
+        }}
+      />
+
+      <CsvImportModal
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        onImported={() => {
+          setCsvImportOpen(false)
           refresh()
         }}
       />

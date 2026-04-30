@@ -6,6 +6,7 @@ import type { Lead, LeadStatus } from '@/types'
 import LeadFormModal from '@/components/leads/LeadFormModal'
 import PipelineColumn, { type ColumnDef } from './PipelineColumn'
 import PipelineStats from './PipelineStats'
+import type { CardView } from '@/app/pipeline/page'
 
 const COLUMNS: ColumnDef[] = [
   { id: 'New', label: 'Prospecting', color: '#888780' },
@@ -19,12 +20,20 @@ const COLUMNS: ColumnDef[] = [
 
 export { COLUMNS }
 
+type PipelineFilters = {
+  serviceType: string
+  region: string
+  assignedTo: string
+}
+
 type Props = {
   modalOpen: boolean
   modalInitialStatus: LeadStatus | null
   onModalClose: () => void
   onOpenAddModal: (status: LeadStatus | null) => void
   onLeadsChange?: (leads: Lead[]) => void
+  cardView?: CardView
+  filters?: PipelineFilters
 }
 
 export default function PipelineBoard({
@@ -33,6 +42,8 @@ export default function PipelineBoard({
   onModalClose,
   onOpenAddModal,
   onLeadsChange,
+  cardView = 'detailed',
+  filters,
 }: Props) {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,6 +101,16 @@ export default function PipelineBoard({
     }
   }
 
+  // Apply filters
+  const filtered = filters
+    ? leads.filter((l) => {
+        if (filters.serviceType && l.serviceType !== filters.serviceType) return false
+        if (filters.region && l.region !== filters.region) return false
+        if (filters.assignedTo && l.assignedTo !== filters.assignedTo) return false
+        return true
+      })
+    : leads
+
   const grouped: Record<LeadStatus, Lead[]> = {
     New: [],
     Contacted: [],
@@ -99,18 +120,17 @@ export default function PipelineBoard({
     'Closed Won': [],
     'Closed Lost': [],
   }
-  for (const l of leads) {
+  for (const l of filtered) {
     if (grouped[l.status]) grouped[l.status].push(l)
   }
 
   if (loading) {
     return (
-      <div className="flex gap-6 overflow-x-auto pb-12">
+      <div className="flex gap-3 pb-12 overflow-x-auto lg:overflow-x-visible">
         {COLUMNS.map((c) => (
           <div
             key={c.id}
-            className="flex-shrink-0 flex flex-col gap-3"
-            style={{ width: 300 }}
+            className="min-w-[140px] sm:min-w-0 sm:flex-1 flex flex-col gap-3"
           >
             <div className="h-5 w-32 bg-[#ebedf8] rounded-none animate-pulse" />
             {[0, 1, 2].map((i) => (
@@ -152,8 +172,8 @@ export default function PipelineBoard({
       )}
       <DragDropContext onDragEnd={onDragEnd}>
         <div
-          className="flex overflow-x-auto pb-12"
-          style={{ gap: 24 }}
+          className="flex pb-12 overflow-x-auto lg:overflow-x-visible"
+          style={{ gap: 12 }}
         >
           {COLUMNS.map((col) => (
             <PipelineColumn
@@ -161,6 +181,7 @@ export default function PipelineBoard({
               column={col}
               leads={grouped[col.id]}
               onAddLead={(status) => onOpenAddModal(status)}
+              cardView={cardView}
             />
           ))}
         </div>

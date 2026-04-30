@@ -36,7 +36,11 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function Sidebar() {
+type SidebarProps = {
+  onNavigate?: () => void
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const { t } = useI18n()
   return (
@@ -73,6 +77,7 @@ export default function Sidebar() {
                 <Link
                   key={item.labelKey}
                   href={item.href}
+                  onClick={onNavigate}
                   className={`relative flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium rounded-none transition-colors ${
                     active
                       ? 'bg-[#E8E0D0] text-[#1A1A1A] font-semibold'

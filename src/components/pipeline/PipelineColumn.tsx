@@ -2,6 +2,7 @@
 
 import { Droppable } from '@hello-pangea/dnd'
 import type { Lead, LeadStatus } from '@/types'
+import type { CardView } from '@/app/pipeline/page'
 import PipelineCard from './PipelineCard'
 
 export type ColumnDef = {
@@ -14,6 +15,7 @@ type Props = {
   column: ColumnDef
   leads: Lead[]
   onAddLead: (status: LeadStatus) => void
+  cardView?: CardView
 }
 
 function pad2(n: number): string {
@@ -25,25 +27,25 @@ function formatYen(n: number): string {
   return `¥${(n / 1_000_000).toFixed(1)}M`
 }
 
-export default function PipelineColumn({ column, leads, onAddLead }: Props) {
+export default function PipelineColumn({ column, leads, onAddLead, cardView = 'detailed' }: Props) {
   const totalValue = leads.reduce((sum, l) => sum + (Number(l.dealValue) || 0), 0)
   return (
-    <div className="flex flex-col flex-shrink-0" style={{ width: 300 }}>
-      <div className="flex items-center justify-between px-1 mb-3">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col shrink-0 w-[160px] sm:w-auto sm:shrink sm:flex-1 sm:min-w-0">
+      <div className="flex items-center justify-between px-1 mb-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span
-            className="text-[11px] uppercase font-bold text-fg/40"
-            style={{ letterSpacing: '0.18em' }}
+            className="text-[10px] uppercase font-bold text-fg/40 truncate"
+            style={{ letterSpacing: '0.14em' }}
           >
             {column.label}
           </span>
           <span
-            className="rounded-none px-2 py-0.5 text-[10px] font-bold text-muted bg-surface-lilac"
+            className="rounded-none px-1.5 py-0.5 text-[9px] font-bold text-muted bg-surface-lilac shrink-0"
           >
             {pad2(leads.length)}
           </span>
         </div>
-        <span className="text-[11px] font-bold text-brand">
+        <span className="text-[10px] font-bold text-brand shrink-0">
           {formatYen(totalValue)}
         </span>
       </div>
@@ -79,7 +81,7 @@ export default function PipelineColumn({ column, leads, onAddLead }: Props) {
             </button>
 
             {leads.map((lead, idx) => (
-              <PipelineCard key={lead.id} lead={lead} index={idx} />
+              <PipelineCard key={lead.id} lead={lead} index={idx} compact={cardView === 'compact'} />
             ))}
             {provided.placeholder}
           </div>

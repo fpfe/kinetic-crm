@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   ColumnDef,
@@ -51,6 +51,87 @@ function SourceIcon({ source }: { source: string }) {
   )
 }
 
+/* ------------------------------------------------------------------ */
+/*  Inline edit cell                                                   */
+/* ------------------------------------------------------------------ */
+
+type InlineEditCellProps = {
+  value: string
+  onSave: (value: string) => void
+  className?: string
+  inputClassName?: string
+  placeholder?: string
+  /** Render the display state — receives onClick handler to enter edit mode */
+  children?: (opts: { onDoubleClick: () => void }) => React.ReactNode
+}
+
+function InlineEditCell({ value, onSave, className, inputClassName, placeholder, children }: InlineEditCellProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editing])
+
+  // Sync when value changes externally
+  useEffect(() => {
+    if (!editing) setDraft(value)
+  }, [value, editing])
+
+  const commit = useCallback(() => {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed !== value) {
+      onSave(trimmed)
+    }
+  }, [draft, value, onSave])
+
+  const cancel = useCallback(() => {
+    setEditing(false)
+    setDraft(value)
+  }, [value])
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') cancel()
+        }}
+        className={inputClassName || 'w-full px-2 py-1 text-[13px] rounded-none border border-[#a83900]/30 bg-white outline-none focus:border-[#a83900] focus:ring-1 focus:ring-[#a83900]/20'}
+        placeholder={placeholder}
+      />
+    )
+  }
+
+  if (children) {
+    return <>{children({ onDoubleClick: () => setEditing(true) })}</>
+  }
+
+  return (
+    <div
+      className={`cursor-text rounded-none px-1 -mx-1 transition-colors hover:bg-[#f5f0e8]/60 ${className || ''}`}
+      onDoubleClick={() => setEditing(true)}
+      title="Double-click to edit"
+    >
+      {value || <span className="text-gray-300 italic">{placeholder || 'Empty'}</span>}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Table                                                              */
+/* ------------------------------------------------------------------ */
+
 const GRID_COLS =
   'grid-cols-[40px_1.4fr_1.4fr_1fr_1fr_1fr_1.1fr_60px]'
 
@@ -62,6 +143,7 @@ type Props = {
   onEdit: (lead: Lead) => void
   onDelete: (lead: Lead) => void
   onStatusChange: (lead: Lead, status: LeadStatus) => void
+  onInlineEdit?: (lead: Lead, field: keyof Lead, value: string) => void
 }
 
 export default function LeadTable({
@@ -72,6 +154,7 @@ export default function LeadTable({
   onEdit,
   onDelete,
   onStatusChange,
+  onInlineEdit,
 }: Props) {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -107,14 +190,36 @@ export default function LeadTable({
           if (!lead.contactName && !lead.email) return null
           return (
             <div className="min-w-0">
-              <div className="text-[14px] font-bold text-[#181c23] truncate" title={lead.contactName}>
-                {lead.contactName}
-              </div>
-              {lead.email && (
-                <div className="text-[12px] text-gray-500 truncate" title={lead.email}>
-                  {lead.email}
-                </div>
-              )}
+              <InlineEditCell
+                value={lead.contactName}
+                onSave={(v) => onInlineEdit?.(lead, 'contactName', v)}
+                placeholder="Add name"
+              >
+                {({ onDoubleClick }) => (
+                  <div
+                    className="text-[14px] font-bold text-[#181c23] truncate cursor-text rounded-none px-1 -mx-1 hover:bg-[#f5f0e8]/60 transition-colors"
+                    onDoubleClick={onDoubleClick}
+                    title={`${lead.contactName} — double-click to edit`}
+                  >
+                    {lead.contactName || <span className="text-gray-300 italic">Add name</span>}
+                  </div>
+                )}
+              </InlineEditCell>
+              <InlineEditCell
+                value={lead.email}
+                onSave={(v) => onInlineEdit?.(lead, 'email', v)}
+                placeholder="Add email"
+              >
+                {({ onDoubleClick }) => (
+                  <div
+                    className="text-[12px] text-gray-500 truncate cursor-text rounded-none px-1 -mx-1 hover:bg-[#f5f0e8]/60 transition-colors"
+                    onDoubleClick={onDoubleClick}
+                    title={`${lead.email} — double-click to edit`}
+                  >
+                    {lead.email || <span className="text-gray-300 italic">Add email</span>}
+                  </div>
+                )}
+              </InlineEditCell>
             </div>
           )
         },
@@ -132,12 +237,30 @@ export default function LeadTable({
                 className="w-2 h-2 rounded-none shrink-0"
                 style={{ background: temperatureColor(lead.status) }}
               />
-              <Link
-                href={`/leads/${lead.id}`}
-                className="text-[13px] font-medium text-[#181c23] truncate cursor-pointer hover:text-[#a83900] hover:underline"
+              <InlineEditCell
+                value={lead.company}
+                onSave={(v) => onInlineEdit?.(lead, 'company', v)}
+                placeholder="Add company"
               >
-                {lead.company}
-              </Link>
+                {({ onDoubleClick }) => (
+                  <div className="min-w-0 flex items-center gap-1 group/company">
+                    <Link
+                      href={`/leads/${lead.id}`}
+                      className="text-[13px] font-medium text-[#181c23] truncate cursor-pointer hover:text-[#a83900] hover:underline"
+                    >
+                      {lead.company}
+                    </Link>
+                    <button
+                      type="button"
+                      onDoubleClick={onDoubleClick}
+                      className="opacity-0 group-hover/company:opacity-60 hover:!opacity-100 transition-opacity shrink-0"
+                      title="Double-click to edit"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#a83900' }}>edit</span>
+                    </button>
+                  </div>
+                )}
+              </InlineEditCell>
             </div>
           )
         },
@@ -146,15 +269,24 @@ export default function LeadTable({
         accessorKey: 'serviceType',
         header: 'Service Type',
         enableSorting: true,
-        cell: ({ getValue }) => {
-          const value = getValue<string>()
+        cell: ({ row }) => {
+          const lead = row.original
           return (
-            <span
-              className="inline-block max-w-[180px] px-2.5 py-1 rounded-none text-[11px] font-semibold text-gray-700 bg-gray-100 truncate"
-              title={value}
+            <InlineEditCell
+              value={lead.serviceType}
+              onSave={(v) => onInlineEdit?.(lead, 'serviceType', v)}
+              placeholder="Add type"
             >
-              {value}
-            </span>
+              {({ onDoubleClick }) => (
+                <span
+                  className="inline-block max-w-[180px] px-2.5 py-1 rounded-none text-[11px] font-semibold text-gray-700 bg-gray-100 truncate cursor-text hover:bg-gray-200 transition-colors"
+                  title={`${lead.serviceType} — double-click to edit`}
+                  onDoubleClick={onDoubleClick}
+                >
+                  {lead.serviceType || 'Add type'}
+                </span>
+              )}
+            </InlineEditCell>
           )
         },
       },
@@ -162,13 +294,25 @@ export default function LeadTable({
         accessorKey: 'leadSource',
         header: 'Lead Source',
         enableSorting: true,
-        cell: ({ getValue }) => {
-          const value = getValue<string>()
+        cell: ({ row }) => {
+          const lead = row.original
           return (
-            <div className="flex items-center gap-2 text-[12px] text-gray-600">
-              <SourceIcon source={value} />
-              <span className="truncate">{value}</span>
-            </div>
+            <InlineEditCell
+              value={lead.leadSource}
+              onSave={(v) => onInlineEdit?.(lead, 'leadSource', v)}
+              placeholder="Add source"
+            >
+              {({ onDoubleClick }) => (
+                <div
+                  className="flex items-center gap-2 text-[12px] text-gray-600 cursor-text rounded-none px-1 -mx-1 hover:bg-[#f5f0e8]/60 transition-colors"
+                  onDoubleClick={onDoubleClick}
+                  title={`${lead.leadSource} — double-click to edit`}
+                >
+                  <SourceIcon source={lead.leadSource} />
+                  <span className="truncate">{lead.leadSource || <span className="text-gray-300 italic">Add source</span>}</span>
+                </div>
+              )}
+            </InlineEditCell>
           )
         },
       },
@@ -176,12 +320,24 @@ export default function LeadTable({
         accessorKey: 'assignedTo',
         header: 'Assigned To',
         enableSorting: true,
-        cell: ({ getValue }) => {
-          const value = getValue<string>()
+        cell: ({ row }) => {
+          const lead = row.original
           return (
-            <span className="text-[12px] text-gray-600 truncate block" title={value}>
-              {value || '\u2014'}
-            </span>
+            <InlineEditCell
+              value={lead.assignedTo}
+              onSave={(v) => onInlineEdit?.(lead, 'assignedTo', v)}
+              placeholder="Unassigned"
+            >
+              {({ onDoubleClick }) => (
+                <span
+                  className="text-[12px] text-gray-600 truncate block cursor-text rounded-none px-1 -mx-1 hover:bg-[#f5f0e8]/60 transition-colors"
+                  title={`${lead.assignedTo || 'Unassigned'} — double-click to edit`}
+                  onDoubleClick={onDoubleClick}
+                >
+                  {lead.assignedTo || <span className="text-gray-300 italic">Unassigned</span>}
+                </span>
+              )}
+            </InlineEditCell>
           )
         },
       },
@@ -270,7 +426,7 @@ export default function LeadTable({
         },
       },
     ],
-    [editingStatusId, onView, onEdit, onDelete, onStatusChange]
+    [editingStatusId, onView, onEdit, onDelete, onStatusChange, onInlineEdit]
   )
 
   const table = useReactTable({

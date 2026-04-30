@@ -169,8 +169,16 @@ export default function LeadFinderPage() {
     errTimer.current = window.setTimeout(() => setError(null), 5000)
   }, [])
 
+  /* ----------------- Clear city results ----------------- */
+  const clearCityResults = useCallback(() => {
+    const remaining = leads.filter((l) => l.city !== city)
+    persistLeads(remaining)
+    setSelectedId(null)
+    pushToast(`Cleared ${city} results`)
+  }, [leads, city, persistLeads, pushToast])
+
   /* ----------------- Find leads ----------------- */
-  const findLeads = useCallback(async () => {
+  const findLeads = useCallback(async (mode: 'fresh' | 'add_more' = 'fresh') => {
     const kw = keywords.trim()
     if (!kw) {
       showError('Enter a category or keywords first.')
@@ -185,8 +193,14 @@ export default function LeadFinderPage() {
       setLoadingMsg(LOADING_MESSAGES[mi])
     }, 1800)
 
+    // In fresh mode, only keep leads from OTHER cities
+    // In add_more mode, keep everything and dedupe against all
+    const baseLeads = mode === 'fresh'
+      ? leads.filter((l) => l.city !== city)
+      : leads
+
     const existingNames =
-      leads.map((l) => l.name).join(', ') || '(none)'
+      baseLeads.map((l) => l.name).join(', ') || '(none)'
 
     try {
       const res = await fetch('/api/lead-finder/search', {
@@ -213,17 +227,19 @@ export default function LeadFinderPage() {
         throw new Error('Could not parse results — please try again')
       }
       if (!Array.isArray(arr) || arr.length === 0) {
+        // In fresh mode, still clear old city results even if no new results
+        if (mode === 'fresh') persistLeads(baseLeads)
         setLoading(false)
         showError('No new operators found for this search. Try different keywords.')
         return
       }
 
-      // Dedupe
+      // Dedupe against base leads
       const existingNorm = new Set(
-        leads.map((l) => l.name.toLowerCase().trim())
+        baseLeads.map((l) => l.name.toLowerCase().trim())
       )
       const existingUrls = new Set(
-        leads.map((l) => normalizeUrl(l.website))
+        baseLeads.map((l) => normalizeUrl(l.website))
       )
       const additions: FinderLead[] = []
       let skipped = 0
@@ -252,13 +268,15 @@ export default function LeadFinderPage() {
           added_at: new Date().toISOString(),
         })
       }
-      const next = [...leads, ...additions]
+      const next = [...baseLeads, ...additions]
       persistLeads(next)
       setLoading(false)
       pushToast(
-        `${additions.length} new lead${additions.length === 1 ? '' : 's'} added${
-          skipped ? ` (${skipped} duplicate${skipped === 1 ? '' : 's'} skipped)` : ''
-        }`
+        mode === 'fresh'
+          ? `Found ${additions.length} lead${additions.length === 1 ? '' : 's'} for "${kw}"`
+          : `${additions.length} new lead${additions.length === 1 ? '' : 's'} added${
+              skipped ? ` (${skipped} duplicate${skipped === 1 ? '' : 's'} skipped)` : ''
+            }`
       )
     } catch (err) {
       window.clearInterval(interval)
@@ -386,7 +404,7 @@ export default function LeadFinderPage() {
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') findLeads()
+              if (e.key === 'Enter') findLeads('fresh')
             }}
             placeholder="e.g. sake tasting, food tours"
             className="w-full px-3 py-2 text-sm border border-gray-200 rounded-none bg-gray-50 focus:bg-white focus:border-[#a83900] outline-none transition-colors"
@@ -405,12 +423,21 @@ export default function LeadFinderPage() {
           </div>
 
           <button
-            onClick={findLeads}
+            onClick={() => findLeads('fresh')}
             disabled={loading}
             className="w-full py-2.5 text-sm font-semibold text-white bg-[#a83900] rounded-none hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
           >
             {loading ? 'Searching...' : 'Find Leads'}
           </button>
+          {cityLeads.length > 0 && (
+            <button
+              onClick={() => findLeads('add_more')}
+              disabled={loading}
+              className="w-full mt-1.5 py-2 text-xs font-semibold text-[#a83900] border border-[#a83900]/30 rounded-none hover:bg-[#a83900]/5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              + Find More (keep existing)
+            </button>
+          )}
 
           {error && (
             <div className="mt-3 p-2.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none">
@@ -477,6 +504,7 @@ export default function LeadFinderPage() {
             onOpen={(id) => setSelectedId(id)}
             onDelete={deleteLead}
             onEmail={(id) => setEmailLeadId(id)}
+            onClearCity={clearCityResults}
           />
         )}
       </main>
@@ -529,6 +557,7 @@ function ListView({
   onOpen,
   onDelete,
   onEmail,
+  onClearCity,
 }: {
   city: City
   leads: FinderLead[]
@@ -536,14 +565,27 @@ function ListView({
   onOpen: (id: string) => void
   onDelete: (id: string) => void
   onEmail: (id: string) => void
+  onClearCity: () => void
 }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900">{city} Operators</h2>
-        <span className="text-xs text-gray-500">
-          {leads.length} lead{leads.length === 1 ? '' : 's'}
-        </span>
+        <div className="flex items-center gap-3">
+          {leads.length > 0 && (
+            <button
+              onClick={onClearCity}
+              className="text-xs text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1"
+              title={`Clear all ${city} results`}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>delete_sweep</span>
+              Clear
+            </button>
+          )}
+          <span className="text-xs text-gray-500">
+            {leads.length} lead{leads.length === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
       {leads.length === 0 ? (
         <div className="rounded-none border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500 text-sm">

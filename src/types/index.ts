@@ -25,6 +25,7 @@ export type Lead = {
   notes: string
   createdAt: string
   dealValue: string
+  tags: string
 }
 
 export const LEAD_STATUSES: LeadStatus[] = [
@@ -82,6 +83,17 @@ export type Document = {
   fileSize: string
   driveFileId: string
   uploadedAt: string
+}
+
+export type Contact = {
+  id: string
+  leadId: string
+  name: string
+  role: string
+  email: string
+  phone: string
+  isPrimary: string // 'true' | 'false'
+  createdAt: string
 }
 
 export const DEFAULT_SERVICE_TYPES: string[] = [
