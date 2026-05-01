@@ -128,7 +128,7 @@ export default function ContactsPanel({ leadId }: Props) {
   })
 
   return (
-    <div className="bg-white rounded-none p-5" style={{ border: '1px solid rgba(24,28,35,0.06)' }}>
+    <div className="bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5" style={{ border: '1px solid rgba(24,28,35,0.06)' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-brand" style={{ fontSize: 18 }}>group</span>

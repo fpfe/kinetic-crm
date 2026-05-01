@@ -23,10 +23,10 @@ export default function MetadataPanel({ lead, onEdit }: { lead: Lead; onEdit?: (
 
   return (
     <section
-      className="p-8"
+      className="px-4 py-4 sm:px-5 sm:py-5"
       style={{ background: '#e5e8f3', borderRadius: 0 }}
     >
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <h2
           className="font-display font-extrabold text-[14px] uppercase tracking-tight text-[#181c23]"
           style={{ fontFamily: '"Work Sans", system-ui, sans-serif' }}
@@ -35,20 +35,32 @@ export default function MetadataPanel({ lead, onEdit }: { lead: Lead; onEdit?: (
         </h2>
         <button
           type="button"
-          className="text-gray-500 hover:text-[#a83900] p-1"
+          className="text-gray-500 hover:text-[#a83900] p-1 inline-flex items-center gap-1.5 text-[12px] font-semibold"
           title="Edit"
           onClick={onEdit}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit</span>
+          Edit
         </button>
       </div>
 
-      <div className="flex flex-col gap-8">
+      {/* Top row: 2 columns — Experience Details + Marketing Channels */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
         <div>
-          <div className="text-[10px] uppercase tracking-wider font-bold text-[#a83900] mb-2">
+          <div className="text-[10px] uppercase font-bold text-[#a83900] mb-3" style={{ letterSpacing: '0.18em' }}>
+            Experience Details
+          </div>
+          <div className="flex flex-col gap-2.5">
+            <Row label="Region" value={lead.region} />
+            <Row label="Service" value={lead.serviceType} />
+            <Row label="Assigned To" value={lead.assignedTo} />
+            {lead.dealValue && <Row label="Deal Value" value={lead.dealValue} />}
+            <Row label="Created" value={formatCreated(lead.createdAt)} />
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] uppercase font-bold text-[#a83900] mb-3" style={{ letterSpacing: '0.18em' }}>
             Marketing Channels
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -66,40 +78,26 @@ export default function MetadataPanel({ lead, onEdit }: { lead: Lead; onEdit?: (
             )}
           </div>
         </div>
+      </div>
 
-        <div>
-          <div className="text-[10px] uppercase tracking-wider font-bold text-[#a83900] mb-3">
-            Experience Details
-          </div>
-          <div className="flex flex-col gap-2.5">
-            <Row label="Region" value={lead.region} />
-            <Row label="Service" value={lead.serviceType} />
-            <Row label="Assigned To" value={lead.assignedTo} />
-            {lead.dealValue && <Row label="Deal Value" value={lead.dealValue} />}
-            <Row label="Created" value={formatCreated(lead.createdAt)} />
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[10px] uppercase tracking-wider font-bold text-[#b60056] mb-2">
+      {/* Research Notes — full width below */}
+      {painPoints.length > 0 && (
+        <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+          <div className="text-[10px] uppercase font-bold text-[#b60056] mb-3" style={{ letterSpacing: '0.18em' }}>
             Research Notes
           </div>
-          {painPoints.length === 0 ? (
-            <div className="text-[12px] text-gray-500">—</div>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {painPoints.map((p, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-none bg-[#b60056] mt-1.5 shrink-0" />
-                  <span className="text-[13px] text-[#5b4137]">
-                    <LinkifyText text={p} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="flex flex-col gap-2">
+            {painPoints.map((p, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-none bg-[#b60056] mt-1.5 shrink-0" />
+                <span className="text-[13px] text-[#5b4137]">
+                  <LinkifyText text={p} />
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+      )}
     </section>
   )
 }

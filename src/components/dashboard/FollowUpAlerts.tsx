@@ -200,7 +200,7 @@ export default function FollowUpAlerts() {
 
   if (totalAlerts === 0) {
     return (
-      <div className="bg-success-bg rounded-none p-8">
+      <div className="bg-success-bg rounded-none px-4 py-4 sm:px-5 sm:py-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-none bg-white flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-outlined text-success" style={{ fontSize: 22 }}>check_circle</span>
@@ -217,7 +217,7 @@ export default function FollowUpAlerts() {
   const activeCat = categories.find((c) => c.key === activeTab) || categories[0]
 
   return (
-    <div className="bg-white rounded-none p-8">
+    <div className="bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

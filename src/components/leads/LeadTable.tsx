@@ -133,7 +133,7 @@ function InlineEditCell({ value, onSave, className, inputClassName, placeholder,
 /* ------------------------------------------------------------------ */
 
 const GRID_COLS =
-  'grid-cols-[40px_1.4fr_1.4fr_1fr_1fr_1fr_1.1fr_60px]'
+  'grid-cols-[40px_1.4fr_1.4fr_1fr_1fr_0.8fr_1.1fr_0.9fr_60px]'
 
 type Props = {
   leads: Lead[]
@@ -144,6 +144,8 @@ type Props = {
   onDelete: (lead: Lead) => void
   onStatusChange: (lead: Lead, status: LeadStatus) => void
   onInlineEdit?: (lead: Lead, field: keyof Lead, value: string) => void
+  onEnrich?: (lead: Lead) => void
+  onFollowUpChange?: (lead: Lead, date: string) => void
 }
 
 export default function LeadTable({
@@ -155,8 +157,12 @@ export default function LeadTable({
   onDelete,
   onStatusChange,
   onInlineEdit,
+  onEnrich,
+  onFollowUpChange,
 }: Props) {
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const [sorting, setSorting] = useState<SortingState>([])
 
   const columns = useMemo<ColumnDef<Lead>[]>(
@@ -379,16 +385,96 @@ export default function LeadTable({
         },
       },
       {
+        id: 'followUp',
+        accessorKey: 'followUpDate',
+        header: 'Follow-up',
+        enableSorting: true,
+        cell: ({ row }) => {
+          const lead = row.original
+          const dateStr = lead.followUpDate
+          const today = new Date(new Date().toDateString())
+          const isOverdue = dateStr && new Date(dateStr) < today
+          const isToday = dateStr && new Date(dateStr).getTime() === today.getTime()
+          const isSoon = dateStr && !isOverdue && !isToday && (new Date(dateStr).getTime() - today.getTime()) <= 3 * 86400000
+
+          if (dateStr) {
+            const d = new Date(dateStr + 'T00:00:00')
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            return (
+              <div className="flex items-center gap-1.5 group/followup">
+                <span
+                  className="text-[12px] font-semibold px-1.5 py-0.5"
+                  style={{
+                    background: isOverdue ? '#fef2f2' : isToday ? '#fffbeb' : isSoon ? '#faf8f5' : 'transparent',
+                    color: isOverdue ? '#dc2626' : isToday ? '#BA7517' : '#181c23',
+                  }}
+                  title={isOverdue ? 'Overdue!' : isToday ? 'Today' : dateStr}
+                >
+                  <span className="material-symbols-outlined align-middle mr-0.5" style={{ fontSize: 13, color: isOverdue ? '#dc2626' : '#a83900' }}>calendar_month</span>
+                  {label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newDate = prompt('New follow-up date (YYYY-MM-DD):', dateStr)
+                    if (newDate === null) return
+                    onFollowUpChange?.(lead, newDate)
+                  }}
+                  className="opacity-0 group-hover/followup:opacity-60 hover:!opacity-100 transition-opacity"
+                  title="Change date"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#a83900' }}>edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onFollowUpChange?.(lead, '')}
+                  className="opacity-0 group-hover/followup:opacity-60 hover:!opacity-100 transition-opacity"
+                  title="Clear follow-up"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#888' }}>close</span>
+                </button>
+              </div>
+            )
+          }
+
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                const newDate = prompt('Set follow-up date (YYYY-MM-DD):')
+                if (newDate) onFollowUpChange?.(lead, newDate)
+              }}
+              className="text-[11px] text-gray-300 hover:text-[#a83900] transition-colors flex items-center gap-1"
+              title="Set follow-up date"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>add_circle</span>
+              <span className="italic">Set date</span>
+            </button>
+          )
+        },
+      },
+      {
         id: 'actions',
         header: '',
         cell: ({ row }) => {
           const lead = row.original
+          const isOpen = openMenuId === lead.id
           return (
-            <div className="relative flex justify-end group">
+            <div className="flex justify-end items-center gap-1">
               <button
-                className="text-gray-400 group-hover:text-[#a83900] p-1"
+                className={`p-1 transition-colors ${isOpen ? 'text-[#a83900]' : 'text-gray-400 hover:text-[#a83900]'}`}
                 title="Actions"
                 type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isOpen) {
+                    setOpenMenuId(null)
+                  } else {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 })
+                    setOpenMenuId(lead.id)
+                  }
+                }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <circle cx="5" cy="12" r="2" />
@@ -396,37 +482,12 @@ export default function LeadTable({
                   <circle cx="19" cy="12" r="2" />
                 </svg>
               </button>
-              <div
-                className="absolute right-0 top-full z-30 w-32 bg-white rounded-none py-1 text-[13px] hidden group-hover:block"
-                style={{ boxShadow: '0 8px 24px rgba(15,15,30,0.12)' }}
-              >
-                <button
-                  className="w-full text-left px-3 py-2 hover:bg-[#ebedf8]"
-                  onClick={() => onEdit(lead)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 hover:bg-[#ebedf8]"
-                  onClick={() => onView(lead)}
-                >
-                  View
-                </button>
-                <button
-                  className="w-full text-left px-3 py-2 hover:bg-[#ebedf8] text-red-600"
-                  onClick={() => {
-                    if (confirm(`Delete ${lead.contactName}?`)) onDelete(lead)
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
             </div>
           )
         },
       },
     ],
-    [editingStatusId, onView, onEdit, onDelete, onStatusChange, onInlineEdit]
+    [editingStatusId, openMenuId, onView, onEdit, onDelete, onStatusChange, onInlineEdit, onEnrich, onFollowUpChange]
   )
 
   const table = useReactTable({
@@ -446,6 +507,7 @@ export default function LeadTable({
   })
 
   return (
+    <>
     <div className="rounded-none overflow-visible">
       {table.getHeaderGroups().map((hg) => (
         <div
@@ -493,5 +555,48 @@ export default function LeadTable({
       </div>
 
     </div>
+
+    {/* Fixed-position action menu — rendered outside table to avoid overflow clipping */}
+    {openMenuId && (() => {
+      const lead = leads.find((l) => l.id === openMenuId)
+      if (!lead) return null
+      return (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+          <div
+            className="fixed z-50 w-36 bg-white rounded-none py-1 text-[13px]"
+            style={{
+              top: menuPos.top,
+              left: menuPos.left,
+              boxShadow: '0 8px 24px rgba(15,15,30,0.12)',
+              border: '1px solid #e5e8f3',
+            }}
+          >
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-[#ebedf8]"
+              onClick={() => { setOpenMenuId(null); onEdit(lead) }}
+            >
+              Edit
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-[#ebedf8]"
+              onClick={() => { setOpenMenuId(null); onView(lead) }}
+            >
+              View
+            </button>
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-[#ebedf8] text-red-600"
+              onClick={() => {
+                setOpenMenuId(null)
+                if (confirm(`Delete ${lead.contactName || lead.company}?`)) onDelete(lead)
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )
+    })()}
+    </>
   )
 }

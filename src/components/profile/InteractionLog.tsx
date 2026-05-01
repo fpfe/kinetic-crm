@@ -155,7 +155,7 @@ export default function InteractionLog({ leadId, lead }: { leadId: string; lead?
 
   return (
     <section
-      className="bg-white p-8"
+      className="bg-white px-4 py-4 sm:px-5 sm:py-5"
       style={{
         borderRadius: 0,
         border: '1px solid rgba(228,190,177,0.05)',

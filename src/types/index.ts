@@ -26,6 +26,7 @@ export type Lead = {
   createdAt: string
   dealValue: string
   tags: string
+  followUpDate: string
 }
 
 export const LEAD_STATUSES: LeadStatus[] = [

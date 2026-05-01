@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
           notes: row.notes || '',
           dealValue: row.dealValue || row.deal_value || '0',
           tags: row.tags || '',
+          followUpDate: row.followUpDate || row.follow_up_date || '',
         })
         results.success++
         // Small delay to avoid rate limiting Google Sheets

@@ -65,7 +65,7 @@ export default function OverdueFollowUps() {
   }
 
   return (
-    <div className="bg-[#e5e8f3] rounded-none p-8">
+    <div className="bg-[#e5e8f3] rounded-none px-4 py-4 sm:px-5 sm:py-5">
       <div className="flex items-center justify-between mb-6">
         <h2
           className="font-display font-bold text-[#181c23]"

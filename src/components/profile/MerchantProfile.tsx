@@ -45,13 +45,21 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
     }
   }
 
+  const followUpDate = lead.followUpDate
+  const isOverdue = followUpDate && new Date(followUpDate) < new Date(new Date().toDateString())
+  const isToday = followUpDate && new Date(followUpDate).toDateString() === new Date().toDateString()
+
+  const tags = lead.tags
+    ? lead.tags.split(',').map((t) => t.trim()).filter(Boolean)
+    : []
+
   return (
     <div>
       {/* Hero */}
-      <div className="bg-white pb-4 sm:pb-8">
+      <div className="bg-white px-4 py-4 sm:px-5 sm:py-5 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-8">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-4">
               <span className="px-3 py-1 rounded-none bg-[#ece6f4] text-pipe-purple text-[10px] font-bold uppercase" style={{ letterSpacing: '0.18em' }}>
                 {lead.region || '—'}
               </span>
@@ -67,7 +75,7 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
             >
               {lead.company}
             </h1>
-            <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3 text-[12px] sm:text-[14px] text-fg-warm flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 mt-3 text-[12px] sm:text-[14px] text-fg-warm flex-wrap">
               {lead.contactName && (
                 <>
                   <span className="flex items-center gap-1.5">
@@ -113,9 +121,48 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
                 </>
               )}
             </div>
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-4">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-none"
+                    style={{ background: '#f5f0e8', color: '#5b4137' }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Follow-up Date */}
+            {followUpDate && (
+              <div className="flex items-center gap-2 mt-4">
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 16, color: isOverdue ? '#dc2626' : isToday ? '#BA7517' : '#a83900' }}
+                >
+                  calendar_month
+                </span>
+                <span
+                  className="text-[12px] font-bold"
+                  style={{ color: isOverdue ? '#dc2626' : isToday ? '#BA7517' : '#5b4137' }}
+                >
+                  {isOverdue ? 'Overdue: ' : isToday ? 'Follow-up Today: ' : 'Follow-up: '}
+                  {new Date(followUpDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                {isOverdue && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-red-100 text-red-700 rounded-none">
+                    {Math.ceil((Date.now() - new Date(followUpDate).getTime()) / 86400000)}d overdue
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0 flex-wrap">
+          <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 shrink-0 flex-wrap">
             <button
               type="button"
               onClick={() => setEmailOpen(true)}
@@ -126,7 +173,7 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
               <span className="hidden sm:inline">Email Templates</span>
               <span className="sm:hidden">Templates</span>
             </button>
-            <div className="hidden sm:block text-[10px] uppercase text-muted font-bold" style={{ letterSpacing: '0.22em' }}>
+            <div className="hidden sm:block text-[10px] uppercase text-muted font-bold mt-2" style={{ letterSpacing: '0.22em' }}>
               Current Status
             </div>
             <div className="flex items-center gap-2">
@@ -172,15 +219,15 @@ export default function MerchantProfile({ lead }: { lead: Lead }) {
         </div>
       </div>
 
-      {/* Bento grid */}
+      {/* Bento grid — Metadata + Documents left, Contacts + Interaction Log + Notes right */}
       <div className="grid grid-cols-12 gap-4 sm:gap-6">
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
-          <InteractionLog leadId={lead.id} lead={lead} />
+          <MetadataPanel lead={lead} onEdit={() => setEditOpen(true)} />
           <DocumentStorage leadId={lead.id} />
         </div>
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
           <ContactsPanel leadId={lead.id} />
-          <MetadataPanel lead={lead} onEdit={() => setEditOpen(true)} />
+          <InteractionLog leadId={lead.id} lead={lead} />
           <InternalNotes leadId={lead.id} />
         </div>
       </div>

@@ -67,7 +67,7 @@ export default function RecentActivity({ leads }: Props) {
     .slice(0, 5)
 
   return (
-    <div className="bg-surface-lilac rounded-none p-8 xl:col-span-1">
+    <div className="bg-surface-lilac rounded-none px-4 py-4 sm:px-5 sm:py-5 xl:col-span-1">
       <div className="flex items-center justify-between mb-6">
         <h2
           className="font-display font-bold text-fg"
@@ -113,7 +113,7 @@ export default function RecentActivity({ leads }: Props) {
       </div>
 
       {/* Today's Actions */}
-      <div className="mt-8 bg-white rounded-none p-6">
+      <div className="mt-6 bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5">
         <div className="text-[11px] font-bold uppercase text-brand mb-4" style={{ letterSpacing: '0.18em' }}>
           Today&apos;s Actions
         </div>

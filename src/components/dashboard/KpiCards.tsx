@@ -48,7 +48,7 @@ export default function KpiCards({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Card 1 — Total Leads */}
-      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#a83900]/5 flex items-center justify-center">
             <span
@@ -83,7 +83,7 @@ export default function KpiCards({
       </div>
 
       {/* Card 2 — Added This Week */}
-      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#b60056]/5 flex items-center justify-center">
             <span
@@ -118,7 +118,7 @@ export default function KpiCards({
       </div>
 
       {/* Card 3 — Deep Searches This Week */}
-      <div className="bg-white rounded-none p-5 sm:p-8 relative overflow-hidden">
+      <div className="bg-white rounded-none px-4 py-4 sm:px-5 sm:py-5 relative overflow-hidden">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-none bg-[#685588]/5 flex items-center justify-center">
             <span

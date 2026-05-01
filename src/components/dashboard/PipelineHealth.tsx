@@ -37,7 +37,7 @@ export default function PipelineHealth({ stageCounts }: Props) {
     stageCounts.Negotiation
 
   return (
-    <div className="bg-surface-low rounded-none p-8 xl:col-span-2">
+    <div className="bg-surface-low rounded-none px-4 py-4 sm:px-5 sm:py-5 xl:col-span-2">
       <div className="flex items-center justify-between mb-8">
         <h2
           className="font-display font-bold text-fg"

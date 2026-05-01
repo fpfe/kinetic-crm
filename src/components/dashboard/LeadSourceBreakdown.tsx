@@ -27,7 +27,7 @@ export default function LeadSourceBreakdown({ leads }: Props) {
   const max = rows.length > 0 ? Math.max(...rows.map((r) => r.count), 1) : 1
 
   return (
-    <div className="bg-white border border-gray-200 rounded-none p-5 xl:col-span-1">
+    <div className="bg-white border border-gray-200 rounded-none px-4 py-4 sm:px-5 sm:py-5 xl:col-span-1">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
           Lead Sources

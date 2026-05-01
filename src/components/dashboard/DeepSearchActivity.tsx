@@ -41,7 +41,7 @@ export default function DeepSearchActivity({ history }: Props) {
     .slice(0, 5)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-none p-5 xl:col-span-2">
+    <div className="bg-white border border-gray-200 rounded-none px-4 py-4 sm:px-5 sm:py-5 xl:col-span-2">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[12px] uppercase tracking-[0.18em] font-bold text-[#5b4137]/60">
           Deep Search Activity

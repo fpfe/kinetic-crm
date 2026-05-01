@@ -91,9 +91,14 @@ function deriveRegion(addr: string | null): string {
 function buildNotes(b: Brief): string {
   const c = b.companies[0]
   const parts: string[] = []
-  if (c.homepage) parts.push(`Homepage: ${c.homepage}`)
+  if (c.legal_name_ja) parts.push(`JP: ${c.legal_name_ja}`)
+  if (c.homepage) parts.push(`Web: ${c.homepage}`)
+  if (c.hq_address) parts.push(`Address: ${c.hq_address}`)
   if (c.inquiry_form_url) parts.push(`Inquiry form: ${c.inquiry_form_url}`)
   if (c.linkedin_url) parts.push(`LinkedIn: ${c.linkedin_url}`)
+  if (b.reputation.rating) parts.push(`Rating: ${b.reputation.rating}`)
+  if (b.reputation.listed_on_otas?.length)
+    parts.push(`Listed on: ${b.reputation.listed_on_otas.join(', ')}`)
   parts.push(`Score: ${b.score}/100 — ${b.score_rationale}`)
   if (b.service_type) parts.push(`Service type: ${b.service_type}`)
   if (b.market_demand_tier) parts.push(`Market demand: Tier ${b.market_demand_tier} (DBJ-JTBF 2025)`)
@@ -108,6 +113,17 @@ function buildNotes(b: Brief): string {
     parts.push(`Recent news: ${b.reputation.recent_news}`)
   parts.push(`Next action: ${b.next_action}`)
   return parts.join('\n')
+}
+
+function buildTags(b: Brief): string {
+  const tags: string[] = []
+  if (b.service_type) tags.push(b.service_type)
+  if (b.market_demand_tier) tags.push(`Tier ${b.market_demand_tier}`)
+  if (b.score >= 70) tags.push('High Score')
+  if (b.reputation.listed_on_otas?.length) {
+    b.reputation.listed_on_otas.forEach((o) => tags.push(o))
+  }
+  return tags.join(',')
 }
 
 function formatBriefMarkdown(b: Brief): string {
@@ -530,6 +546,8 @@ function BriefCard({
     setSavedThisResult(false)
     setJustSaved(false)
     setSaveError(null)
+    setEnriching(false)
+    setEnriched(false)
   }, [brief])
 
   const onCopy = async () => {
@@ -554,6 +572,9 @@ function BriefCard({
     }
   }
 
+  const [enriching, setEnriching] = useState(false)
+  const [enriched, setEnriched] = useState(false)
+
   const onSave = async () => {
     const primary = brief.companies[0]
     if (!primary) return
@@ -572,6 +593,8 @@ function BriefCard({
         region: deriveRegion(primary.hq_address),
         notes: buildNotes(brief),
         dealValue: '',
+        tags: buildTags(brief),
+        followUpDate: '',
       }
       const res = await fetch('/api/leads', {
         method: 'POST',
@@ -587,6 +610,8 @@ function BriefCard({
       setJustSaved(true)
       onSaved()
       window.setTimeout(() => setJustSaved(false), 1500)
+
+      // Link to history
       if (historyId && createdLead.id) {
         const leadId = createdLead.id
         fetch(`/api/deep-search-history/${historyId}`, {
@@ -598,6 +623,66 @@ function BriefCard({
             if (r.ok) onLeadLinked(historyId, leadId)
           })
           .catch((e) => console.warn('history PATCH failed', e))
+
+        // Auto-enrich: fetch additional contact details, social links, etc.
+        setEnriching(true)
+        try {
+          const enrichRes = await fetch('/api/leads/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              company: primary.legal_name_en,
+              region: deriveRegion(primary.hq_address),
+              serviceType: brief.service_type || '',
+              notes: brief.next_action,
+            }),
+          })
+          if (enrichRes.ok) {
+            const enrichData = await enrichRes.json()
+            // Build enrichment updates
+            const updates: Record<string, string> = {}
+
+            // Contact info
+            if (enrichData.keyContact?.name) updates.contactName = enrichData.keyContact.name
+            if (enrichData.keyContact?.email) updates.email = enrichData.keyContact.email
+            if (enrichData.keyContact?.phone && !primary.phone) updates.phone = enrichData.keyContact.phone
+
+            // Enrich notes with social links and additional info
+            const extraNotes: string[] = []
+            if (enrichData.description) extraNotes.push(enrichData.description)
+            if (enrichData.socialLinks?.instagram) extraNotes.push(`IG: ${enrichData.socialLinks.instagram}`)
+            if (enrichData.socialLinks?.facebook) extraNotes.push(`FB: ${enrichData.socialLinks.facebook}`)
+            if (enrichData.socialLinks?.tripadvisor) extraNotes.push(`TA: ${enrichData.socialLinks.tripadvisor}`)
+            if (enrichData.socialLinks?.google_maps) extraNotes.push(`Maps: ${enrichData.socialLinks.google_maps}`)
+            if (enrichData.notableFacts?.length) extraNotes.push(enrichData.notableFacts.join(' | '))
+            if (extraNotes.length) {
+              updates.notes = payload.notes + '\n' + extraNotes.join(' | ')
+            }
+
+            // Merge enrichment tags
+            if (enrichData.suggestedTags?.length) {
+              const existingTags = payload.tags ? payload.tags.split(',').map((t: string) => t.trim()) : []
+              const newTags = enrichData.suggestedTags.filter((t: string) => !existingTags.includes(t))
+              if (newTags.length) {
+                updates.tags = [...existingTags, ...newTags].join(',')
+              }
+            }
+
+            // Apply enrichment to the lead
+            if (Object.keys(updates).length > 0) {
+              await fetch(`/api/leads/${leadId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+              })
+            }
+            setEnriched(true)
+          }
+        } catch (e) {
+          console.warn('Auto-enrichment failed (non-blocking):', e)
+        } finally {
+          setEnriching(false)
+        }
       }
     } catch (err) {
       setSaveError((err as Error).message || 'Failed to save lead')
@@ -762,12 +847,22 @@ function BriefCard({
         >
           {saving
             ? 'Saving...'
+            : enriching
+            ? 'Enriching...'
             : justSaved
             ? 'Saved ✓'
+            : savedThisResult && enriched
+            ? 'Saved + Enriched'
             : savedThisResult
             ? 'Saved'
             : 'Save as Lead'}
         </button>
+        {enriching && (
+          <span className="text-[12px] text-gray-400 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[#a83900]" style={{ fontSize: 14 }}>auto_awesome</span>
+            Auto-enriching contact details...
+          </span>
+        )}
         <button
           onClick={onCopy}
           className="px-4 py-2 text-sm font-semibold text-gray-900 border border-gray-300 rounded-none hover:border-gray-500 transition-colors"

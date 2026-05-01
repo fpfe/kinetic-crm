@@ -12,6 +12,8 @@ import LeadFormModal from '@/components/leads/LeadFormModal'
 import ViewLeadModal from '@/components/leads/ViewLeadModal'
 import DuplicateCheckModal from '@/components/leads/DuplicateCheckModal'
 import CsvImportModal from '@/components/leads/CsvImportModal'
+import EnrichmentPanel from '@/components/leads/EnrichmentPanel'
+import MagicFieldsPanel from '@/components/leads/MagicFieldsPanel'
 import { useToast } from '@/components/ui/Toast'
 
 export default function LeadsPage() {
@@ -33,6 +35,8 @@ export default function LeadsPage() {
   const [viewingLead, setViewingLead] = useState<Lead | null>(null)
   const [dupeCheckOpen, setDupeCheckOpen] = useState(false)
   const [csvImportOpen, setCsvImportOpen] = useState(false)
+  const [enrichingLead, setEnrichingLead] = useState<Lead | null>(null)
+  const [magicFieldsOpen, setMagicFieldsOpen] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -236,6 +240,77 @@ export default function LeadsPage() {
     bulkPatch({ status }, `status → ${status}`)
   }
 
+  // ─────────── follow-up + calendar sync ───────────
+  const handleFollowUpChange = async (lead: Lead, date: string) => {
+    // Optimistic update
+    setLeads((prev) =>
+      prev.map((l) => (l.id === lead.id ? { ...l, followUpDate: date } : l))
+    )
+    try {
+      // Save the follow-up date to the lead
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followUpDate: date }),
+      })
+      if (!res.ok) throw new Error('Failed to save follow-up date')
+
+      // If a date is set, create a Google Calendar event
+      if (date) {
+        try {
+          const syncRes = await fetch('/api/leads/calendar-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: lead.id,
+              company: lead.company,
+              contactName: lead.contactName,
+              followUpDate: date,
+              notes: lead.notes,
+              serviceType: lead.serviceType,
+            }),
+          })
+          if (syncRes.ok) {
+            toastSuccess(`Follow-up set for ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — calendar event ready`)
+          }
+        } catch {
+          // Calendar sync is best-effort
+          toastSuccess(`Follow-up date set for ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+        }
+      } else {
+        toastSuccess('Follow-up date cleared')
+      }
+    } catch (err) {
+      // Revert on failure
+      setLeads((prev) =>
+        prev.map((l) => (l.id === lead.id ? { ...l, followUpDate: lead.followUpDate } : l))
+      )
+      toastError((err as Error).message)
+    }
+  }
+
+  // ─────────── enrichment apply ───────────
+  const handleEnrichApply = async (lead: Lead, updates: Partial<Lead>) => {
+    // Optimistic update
+    setLeads((prev) =>
+      prev.map((l) => (l.id === lead.id ? { ...l, ...updates } : l))
+    )
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) throw new Error('Failed to save enrichment')
+    } catch (err) {
+      // revert on failure
+      setLeads((prev) =>
+        prev.map((l) => (l.id === lead.id ? lead : l))
+      )
+      toastError((err as Error).message)
+    }
+  }
+
   // ─────────── modal openers ───────────
   const openCreate = () => {
     setFormMode('create')
@@ -274,6 +349,13 @@ export default function LeadsPage() {
           <span className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-none brand-gradient text-white text-[10px] sm:text-[12px] font-bold tracking-wider">
             {hotCount} HOT
           </span>
+          <button
+            onClick={() => setMagicFieldsOpen(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-none border border-[#a83900]/30 text-[#a83900] hover:bg-[#a83900]/5 transition"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>auto_awesome</span>
+            Magic Fields
+          </button>
           <button
             onClick={() => setCsvImportOpen(true)}
             className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-none border border-gray-300 text-gray-700 hover:border-[#a83900] hover:text-[#a83900] transition"
@@ -348,6 +430,8 @@ export default function LeadsPage() {
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
           onInlineEdit={handleInlineEdit}
+          onEnrich={(lead) => setEnrichingLead(lead)}
+          onFollowUpChange={handleFollowUpChange}
         />
         </div>
         </div>
@@ -372,6 +456,10 @@ export default function LeadsPage() {
           setViewingLead(null)
           openEdit(lead)
         }}
+        onEnrich={(lead) => {
+          setViewingLead(null)
+          setEnrichingLead(lead)
+        }}
       />
 
       <DuplicateCheckModal
@@ -391,6 +479,19 @@ export default function LeadsPage() {
           setCsvImportOpen(false)
           refresh()
         }}
+      />
+
+      <EnrichmentPanel
+        open={!!enrichingLead}
+        lead={enrichingLead}
+        onClose={() => setEnrichingLead(null)}
+        onApply={handleEnrichApply}
+      />
+
+      <MagicFieldsPanel
+        open={magicFieldsOpen}
+        leads={filteredLeads}
+        onClose={() => setMagicFieldsOpen(false)}
       />
     </div>
   )

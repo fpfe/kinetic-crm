@@ -34,6 +34,7 @@ const EMPTY_FORM = {
   notes: '',
   dealValue: '',
   tags: '',
+  followUpDate: '',
 }
 
 const inputStyle: React.CSSProperties = {
@@ -96,6 +97,7 @@ export default function LeadFormModal({
         notes: initial.notes,
         dealValue: initial.dealValue ?? '',
         tags: initial.tags ?? '',
+        followUpDate: initial.followUpDate ?? '',
       })
     } else if (initial) {
       setForm({ ...EMPTY_FORM, ...initial } as typeof EMPTY_FORM)
@@ -314,6 +316,14 @@ export default function LeadFormModal({
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label="Follow-up date">
+              <input
+                type="date"
+                style={inputStyle}
+                value={form.followUpDate}
+                onChange={(e) => update('followUpDate', e.target.value)}
+              />
             </Field>
           </div>
           <Field label="Tags">
